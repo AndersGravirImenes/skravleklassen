@@ -143,7 +143,7 @@ export function attachLivingWorld({ scene, nodes, reducedMotion }) {
             setHarvesterFrame(mesh, e.dir8, 0);
         });
     }).catch(() => {
-        /* stille fallback — usynlige harvestere til sprite lastes */
+        console.warn('Harvester-sprites kunne ikke lastes.');
     });
 
     const orni = new THREE.Group();

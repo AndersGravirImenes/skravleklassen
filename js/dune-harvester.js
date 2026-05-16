@@ -24,18 +24,32 @@ const SAND_SHEET = {
     dirOffset: 2,
 };
 
-/** Eksperimentell utpakking fra dune.pak (ofte korrupt — brukes ikke som standard) */
-const GAME_SHEET = {
-    url: 'images/moniac/harvester-game.png',
-    cols: 1,
-    rows: 8,
-    frameW: 24,
-    frameH: 19,
-    dirOffset: 0,
-};
-
-let activeSheet = GAME_SHEET;
+let activeSheet = SAND_SHEET;
 let atlasPromise = null;
+
+function makeFallbackAtlas() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#5a4a38';
+    ctx.fillRect(8, 20, 48, 28);
+    ctx.fillStyle = '#e8923a';
+    ctx.fillRect(24, 14, 16, 10);
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.magFilter = THREE.NearestFilter;
+    tex.minFilter = THREE.NearestFilter;
+    tex.userData.sheet = {
+        url: 'fallback',
+        cols: 1,
+        rows: 1,
+        frameW: 64,
+        frameH: 64,
+        dirOffset: 0,
+    };
+    return tex;
+}
 
 /** Samme som Orientation_256To8 i dunedynasty/src/tools/orientation.c */
 export function orientation256To8(orient256) {
@@ -102,10 +116,16 @@ function loadSheet(sheet) {
 
 export function loadHarvesterAtlas() {
     if (!atlasPromise) {
-        atlasPromise = loadSheet(SAND_SHEET).then((tex) => {
-            activeSheet = tex.userData.sheet;
-            return tex;
-        });
+        atlasPromise = loadSheet(SAND_SHEET)
+            .then((tex) => {
+                activeSheet = tex.userData.sheet;
+                return tex;
+            })
+            .catch(() => {
+                const tex = makeFallbackAtlas();
+                activeSheet = tex.userData.sheet;
+                return tex;
+            });
     }
     return atlasPromise;
 }
@@ -113,11 +133,12 @@ export function loadHarvesterAtlas() {
 export function createHarvesterSprite(atlas, worldScale = 2.35) {
     const sheet = atlas.userData.sheet ?? activeSheet;
     const map = atlas.clone();
-    map.userData.sheet = sheet;
+    map.userData.sheet = { ...sheet };
     map.wrapS = THREE.ClampToEdgeWrapping;
     map.wrapT = THREE.ClampToEdgeWrapping;
     map.magFilter = THREE.NearestFilter;
     map.minFilter = THREE.NearestFilter;
+    map.flipY = true;
     const aspect = sheet.frameW / sheet.frameH;
     const mat = new THREE.MeshBasicMaterial({
         map,
