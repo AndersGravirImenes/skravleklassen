@@ -2,7 +2,10 @@
 <html lang="no">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#0a0604">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>SKRAVLEKLASSEN // Podkast</title>
     <meta name="description" content="Skravleklassen — en norsk podkast med dype samtaler om økonomi, kultur, filosofi og alt det andre. Ny episode hver uke.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -31,7 +34,10 @@
             --grid: rgba(255, 154, 60, 0.05);
         }
 
-        html { scroll-behavior: smooth; }
+        html {
+            scroll-behavior: smooth;
+            scroll-padding-top: 5rem;
+        }
 
         body {
             font-family: 'Rajdhani', system-ui, sans-serif;
@@ -177,6 +183,49 @@
             box-shadow: 0 0 20px var(--neon-amber);
         }
 
+        .nav-menu {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            margin-left: auto;
+        }
+
+        .nav-toggle {
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            gap: 5px;
+            width: 44px;
+            height: 44px;
+            padding: 10px;
+            margin-left: auto;
+            background: transparent;
+            border: 1px solid rgba(255, 154, 60, 0.4);
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .nav-toggle span {
+            display: block;
+            width: 100%;
+            height: 2px;
+            background: var(--neon-amber);
+            box-shadow: 0 0 6px rgba(255, 154, 60, 0.5);
+            transition: transform 0.25s ease, opacity 0.25s ease;
+        }
+
+        .nav-toggle[aria-expanded="true"] span:nth-child(1) {
+            transform: translateY(7px) rotate(45deg);
+        }
+
+        .nav-toggle[aria-expanded="true"] span:nth-child(2) {
+            opacity: 0;
+        }
+
+        .nav-toggle[aria-expanded="true"] span:nth-child(3) {
+            transform: translateY(-7px) rotate(-45deg);
+        }
+
         /* ===== Title strip ===== */
         .title-strip {
             text-align: center;
@@ -278,6 +327,7 @@
             max-width: 1200px;
             margin: 0 auto;
             position: relative;
+            scroll-margin-top: 5rem;
         }
 
         .section-label {
@@ -810,12 +860,225 @@
         footer a { color: var(--neon-amber); transition: text-shadow 0.2s ease; }
         footer a:hover { text-shadow: 0 0 8px var(--neon-amber); }
 
-        @media (max-width: 600px) {
-            .section { padding: 2rem 1.25rem 4rem; }
-            .nav-inner { padding: 1rem 1.25rem; }
-            .nav-cta { display: none; }
-            .nav-links { gap: 1rem; font-size: 0.8rem; }
-            .title-strip { padding: 3rem 1.25rem 1.5rem; }
+        /* ===== Tablet & mobil ===== */
+        @media (max-width: 768px) {
+            html { scroll-padding-top: 4.5rem; }
+
+            nav {
+                padding-top: env(safe-area-inset-top, 0);
+            }
+
+            .nav-inner {
+                padding: 0.75rem 1rem;
+                padding-left: max(1rem, env(safe-area-inset-left));
+                padding-right: max(1rem, env(safe-area-inset-right));
+                flex-wrap: wrap;
+                align-items: center;
+            }
+
+            .logo {
+                font-size: 0.95rem;
+                letter-spacing: 0.1em;
+                max-width: calc(100% - 52px);
+            }
+
+            .nav-toggle {
+                display: flex;
+                flex-shrink: 0;
+            }
+
+            .nav-menu {
+                display: none;
+                width: 100%;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 0;
+                margin-left: 0;
+                padding: 0.75rem 0 0.5rem;
+                border-top: 1px solid rgba(255, 154, 60, 0.2);
+                margin-top: 0.5rem;
+            }
+
+            .nav-menu.is-open {
+                display: flex;
+            }
+
+            .nav-links {
+                flex-direction: column;
+                gap: 0;
+                width: 100%;
+            }
+
+            .nav-links li {
+                width: 100%;
+                border-bottom: 1px solid rgba(255, 154, 60, 0.1);
+            }
+
+            .nav-links a {
+                display: flex;
+                align-items: center;
+                min-height: 48px;
+                padding: 0.75rem 0.25rem;
+                font-size: 0.9rem;
+            }
+
+            .nav-cta {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                min-height: 48px;
+                margin-top: 0.75rem;
+                width: 100%;
+                text-align: center;
+            }
+
+            .title-strip {
+                padding: 2.5rem 1rem 1.25rem;
+                padding-left: max(1rem, env(safe-area-inset-left));
+                padding-right: max(1rem, env(safe-area-inset-right));
+            }
+
+            .glitch-title {
+                font-size: clamp(2rem, 12vw, 3.5rem);
+                letter-spacing: 0.04em;
+                max-width: 100%;
+                word-break: break-word;
+            }
+
+            .title-strip .subtag {
+                font-size: 0.75rem;
+                letter-spacing: 0.12em;
+                line-height: 1.5;
+                padding: 0 0.5rem;
+            }
+
+            .section {
+                padding: 2rem 1rem 3.5rem;
+                padding-left: max(1rem, env(safe-area-inset-left));
+                padding-right: max(1rem, env(safe-area-inset-right));
+            }
+
+            .section h2 {
+                font-size: 1.45rem;
+                line-height: 1.25;
+            }
+
+            .section .subtitle {
+                font-size: 1rem;
+                margin-bottom: 1.75rem;
+            }
+
+            .topics {
+                grid-template-columns: 1fr;
+                gap: 1.25rem;
+            }
+
+            .topic-card {
+                padding: 1.35rem;
+            }
+
+            .topic-card h3 {
+                font-size: 1.1rem;
+                flex-wrap: wrap;
+            }
+
+            .topic-episodes a {
+                padding: 0.75rem 0.85rem;
+                font-size: 0.95rem;
+                line-height: 1.35;
+            }
+
+            .topic-actions .btn {
+                width: 100%;
+                text-align: center;
+                min-height: 48px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 0.85rem;
+            }
+
+            .participants {
+                gap: 0.75rem;
+            }
+
+            .participant {
+                width: 58px;
+            }
+
+            .participant .avatar {
+                width: 52px;
+                height: 52px;
+            }
+
+            .stat-row {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.75rem;
+            }
+
+            .stat .num {
+                font-size: 1.35rem;
+            }
+
+            .episode {
+                padding: 1rem 1.1rem;
+            }
+
+            .episode h3 {
+                font-size: 0.95rem;
+            }
+
+            #giscus-container {
+                padding: 1rem;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            #forum-current {
+                font-size: 0.75rem;
+                max-width: 100%;
+                word-break: break-word;
+                line-height: 1.4;
+            }
+
+            footer {
+                padding: 2rem 1rem;
+                padding-bottom: max(2rem, env(safe-area-inset-bottom));
+                font-size: 0.8rem;
+            }
+
+            .listen-cta .btn {
+                width: 100%;
+                text-align: center;
+                min-height: 48px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                line-height: 1.3;
+                padding: 0.85rem 1rem;
+            }
+
+            .bg-rain {
+                opacity: 0.35;
+            }
+
+            body::after {
+                opacity: 0.35;
+            }
+        }
+
+        @media (max-width: 380px) {
+            .logo .glow {
+                letter-spacing: 0.05em;
+            }
+
+            .glitch-title {
+                font-size: 1.85rem;
+            }
+
+            .topic-id {
+                font-size: 0.65rem;
+            }
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -836,13 +1099,20 @@
     <nav>
         <div class="nav-inner">
             <a href="#" class="logo"><span class="bracket">[</span><span class="glow">SKRAVLEKLASSEN</span><span class="bracket">]</span></a>
-            <ul class="nav-links">
-                <li><a href="#temaer">Temaer</a></li>
-                <li><a href="#om">Om</a></li>
-                <li><a href="#episoder">Episoder</a></li>
-                <li><a href="#forum">Forum</a></li>
-            </ul>
-            <a href="https://podcasts.apple.com/no/podcast/skravleklassen/id1359266902" class="nav-cta" target="_blank" rel="noopener noreferrer">Lytt ↗</a>
+            <button type="button" class="nav-toggle" id="nav-toggle" aria-expanded="false" aria-controls="nav-menu" aria-label="Åpne meny">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <div class="nav-menu" id="nav-menu">
+                <ul class="nav-links">
+                    <li><a href="#temaer">Temaer</a></li>
+                    <li><a href="#om">Om</a></li>
+                    <li><a href="#episoder">Episoder</a></li>
+                    <li><a href="#forum">Forum</a></li>
+                </ul>
+                <a href="https://podcasts.apple.com/no/podcast/skravleklassen/id1359266902" class="nav-cta" target="_blank" rel="noopener noreferrer">Lytt ↗</a>
+            </div>
         </div>
     </nav>
 
@@ -1122,6 +1392,33 @@
     </footer>
 
     <script>
+        // ===== Mobilmeny =====
+        (function initNav() {
+            const toggle = document.getElementById('nav-toggle');
+            const menu = document.getElementById('nav-menu');
+            if (!toggle || !menu) return;
+
+            function closeMenu() {
+                menu.classList.remove('is-open');
+                toggle.setAttribute('aria-expanded', 'false');
+                toggle.setAttribute('aria-label', 'Åpne meny');
+            }
+
+            toggle.addEventListener('click', () => {
+                const open = menu.classList.toggle('is-open');
+                toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+                toggle.setAttribute('aria-label', open ? 'Lukk meny' : 'Åpne meny');
+            });
+
+            menu.querySelectorAll('a').forEach(link => {
+                link.addEventListener('click', closeMenu);
+            });
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') closeMenu();
+            });
+        })();
+
         // ===== Rain canvas =====
         (function initRain() {
             if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -1136,9 +1433,13 @@
                 canvas.height = window.innerHeight * dpr;
                 canvas.style.width = window.innerWidth + 'px';
                 canvas.style.height = window.innerHeight + 'px';
+                ctx.setTransform(1, 0, 0, 1, 0, 0);
                 ctx.scale(dpr, dpr);
 
-                const count = Math.min(180, Math.floor((window.innerWidth * window.innerHeight) / 9000));
+                const isMobile = window.innerWidth < 768;
+                const maxDrops = isMobile ? 60 : 180;
+                const divisor = isMobile ? 20000 : 9000;
+                const count = Math.min(maxDrops, Math.floor((window.innerWidth * window.innerHeight) / divisor));
                 drops = [];
                 for (let i = 0; i < count; i++) {
                     drops.push({
