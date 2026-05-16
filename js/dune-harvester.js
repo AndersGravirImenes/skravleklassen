@@ -14,17 +14,7 @@ export const HARVESTER_UNIT = {
     directions: 8,
 };
 
-/** Ark fra UNITS.SHP (dune.pak) — 8 retninger, groundSpriteID 248..255 */
-const GAME_SHEET = {
-    url: 'images/moniac/harvester-game.png',
-    cols: 1,
-    rows: 8,
-    frameW: 24,
-    frameH: 19,
-    dirOffset: 0,
-};
-
-/** Fallback: D2TM Unit_HarvesterSand.bmp */
+/** D2TM / Dune II Unit_HarvesterSand — 8 retninger × 2 animasjonsrammer */
 const SAND_SHEET = {
     url: 'images/moniac/harvester-sand.png',
     cols: 8,
@@ -32,6 +22,16 @@ const SAND_SHEET = {
     frameW: 40,
     frameH: 39,
     dirOffset: 2,
+};
+
+/** Eksperimentell utpakking fra dune.pak (ofte korrupt — brukes ikke som standard) */
+const GAME_SHEET = {
+    url: 'images/moniac/harvester-game.png',
+    cols: 1,
+    rows: 8,
+    frameW: 24,
+    frameH: 19,
+    dirOffset: 0,
 };
 
 let activeSheet = GAME_SHEET;
@@ -67,8 +67,8 @@ function chromaKeyTexture(image) {
         const g = px[i + 1];
         const b = px[i + 2];
         const magenta = r > 200 && b > 200 && g < 100;
-        const nearBlack = r < 24 && g < 24 && b < 24;
-        if (magenta || nearBlack) px[i + 3] = 0;
+        const pureBlack = r === 0 && g === 0 && b === 0;
+        if (magenta || pureBlack) px[i + 3] = 0;
     }
     ctx.putImageData(data, 0, 0);
     const tex = new THREE.CanvasTexture(canvas);
@@ -85,9 +85,13 @@ function loadSheet(sheet) {
         new THREE.TextureLoader().load(
             sheet.url,
             (tex) => {
-                activeSheet = sheet;
                 const keyed = chromaKeyTexture(tex.image);
                 tex.dispose();
+                keyed.userData.sheet = {
+                    ...sheet,
+                    frameW: keyed.image.width / sheet.cols,
+                    frameH: keyed.image.height / sheet.rows,
+                };
                 resolve(keyed);
             },
             undefined,
@@ -98,15 +102,25 @@ function loadSheet(sheet) {
 
 export function loadHarvesterAtlas() {
     if (!atlasPromise) {
-        atlasPromise = loadSheet(GAME_SHEET).catch(() => loadSheet(SAND_SHEET));
+        atlasPromise = loadSheet(SAND_SHEET).then((tex) => {
+            activeSheet = tex.userData.sheet;
+            return tex;
+        });
     }
     return atlasPromise;
 }
 
 export function createHarvesterSprite(atlas, worldScale = 2.35) {
-    const aspect = activeSheet.frameW / activeSheet.frameH;
+    const sheet = atlas.userData.sheet ?? activeSheet;
+    const map = atlas.clone();
+    map.userData.sheet = sheet;
+    map.wrapS = THREE.ClampToEdgeWrapping;
+    map.wrapT = THREE.ClampToEdgeWrapping;
+    map.magFilter = THREE.NearestFilter;
+    map.minFilter = THREE.NearestFilter;
+    const aspect = sheet.frameW / sheet.frameH;
     const mat = new THREE.MeshBasicMaterial({
-        map: atlas,
+        map,
         transparent: true,
         alphaTest: 0.12,
         depthWrite: false,
@@ -124,7 +138,7 @@ export function createHarvesterSprite(atlas, worldScale = 2.35) {
 export function setHarvesterFrame(mesh, dir8, animRow) {
     const map = mesh.material.map;
     if (!map) return;
-    const { cols, rows } = activeSheet;
+    const { cols, rows } = map.userData?.sheet ?? activeSheet;
     let col;
     let row;
     if (cols === 1) {
