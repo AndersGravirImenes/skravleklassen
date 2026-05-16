@@ -6,25 +6,21 @@
     <title>Skravleklassen – Podkast</title>
     <meta name="description" content="Skravleklassen er en norsk podkast med lange, uforutsigbare samtaler om økonomi, kultur, filosofi og alt det andre livet byr på. Ny episode hver uke.">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         :root {
             --primary: #ff6b6b;
             --secondary: #4ecdc4;
             --accent: #ffe66d;
             --dark: #2d3436;
+            --muted: #555;
             --light: #f7f7f7;
             --white: #ffffff;
             --shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            --radius: 16px;
         }
 
-        html {
-            scroll-behavior: smooth;
-        }
+        html { scroll-behavior: smooth; }
 
         body {
             font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
@@ -33,15 +29,62 @@
             background: var(--light);
         }
 
+        a { color: inherit; }
+
+        /* ========== Navbar ========== */
+        nav {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .nav-inner {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .nav-logo {
+            font-weight: 800;
+            font-size: 1.2rem;
+            text-decoration: none;
+            color: var(--dark);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 1.5rem;
+            list-style: none;
+            flex-wrap: wrap;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: var(--muted);
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .nav-links a:hover { color: var(--dark); }
+
+        /* ========== Hero ========== */
         .hero {
-            min-height: 90vh;
+            min-height: 75vh;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: var(--white);
             display: flex;
             align-items: center;
             justify-content: center;
             text-align: center;
-            padding: 2rem;
+            padding: 4rem 2rem;
             position: relative;
             overflow: hidden;
         }
@@ -64,17 +107,11 @@
         }
 
         @keyframes fadeUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(30px); }
+            to   { opacity: 1; transform: translateY(0); }
         }
 
-        .hero .badge {
+        .badge {
             display: inline-block;
             background: rgba(255, 255, 255, 0.15);
             backdrop-filter: blur(8px);
@@ -109,12 +146,6 @@
             opacity: 0.9;
         }
 
-        .hero-stats span {
-            display: flex;
-            align-items: center;
-            gap: 0.35rem;
-        }
-
         .btn-group {
             display: flex;
             flex-wrap: wrap;
@@ -126,11 +157,13 @@
             display: inline-block;
             background: var(--accent);
             color: var(--dark);
-            padding: 1rem 2rem;
+            padding: 0.9rem 1.8rem;
             border-radius: 50px;
             font-weight: 700;
-            font-size: 1.05rem;
+            font-size: 1rem;
             text-decoration: none;
+            border: none;
+            cursor: pointer;
             transition: all 0.3s ease;
             box-shadow: var(--shadow);
         }
@@ -152,6 +185,12 @@
             border-color: var(--white);
         }
 
+        .btn-small {
+            padding: 0.55rem 1.1rem;
+            font-size: 0.9rem;
+        }
+
+        /* ========== Section ========== */
         .section {
             padding: 5rem 2rem;
             max-width: 1100px;
@@ -161,7 +200,7 @@
         .section h2 {
             font-size: clamp(1.8rem, 4vw, 2.5rem);
             text-align: center;
-            margin-bottom: 1rem;
+            margin-bottom: 0.75rem;
             color: var(--dark);
         }
 
@@ -172,48 +211,10 @@
             font-size: 1.1rem;
         }
 
-        .features {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-            gap: 2rem;
-        }
+        .alt-bg { background: var(--white); }
+        .alt-bg-2 { background: var(--light); }
 
-        .card {
-            background: var(--white);
-            border-radius: 16px;
-            padding: 2rem;
-            box-shadow: var(--shadow);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            border-top: 4px solid var(--primary);
-        }
-
-        .card:nth-child(2) { border-top-color: var(--secondary); }
-        .card:nth-child(3) { border-top-color: var(--accent); }
-
-        .card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
-        }
-
-        .card .icon {
-            font-size: 2.5rem;
-            margin-bottom: 1rem;
-        }
-
-        .card h3 {
-            font-size: 1.3rem;
-            margin-bottom: 0.5rem;
-            color: var(--dark);
-        }
-
-        .card p {
-            color: #555;
-        }
-
-        .about {
-            background: var(--white);
-        }
-
+        /* ========== Om ========== */
         .about-content {
             max-width: 800px;
             margin: 0 auto;
@@ -221,9 +222,7 @@
             color: #444;
         }
 
-        .about-content p {
-            margin-bottom: 1.2rem;
-        }
+        .about-content p { margin-bottom: 1.2rem; }
 
         .hosts {
             display: flex;
@@ -238,13 +237,140 @@
             padding: 0.5rem 1.25rem;
             border-radius: 50px;
             font-weight: 600;
+        }
+
+        /* ========== Topic cards ========== */
+        .topics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 2rem;
+        }
+
+        .topic-card {
+            background: var(--white);
+            border-radius: var(--radius);
+            padding: 2rem;
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-direction: column;
+            border-top: 4px solid var(--primary);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .topic-card:nth-child(2) { border-top-color: var(--secondary); }
+        .topic-card:nth-child(3) { border-top-color: var(--accent); }
+        .topic-card:nth-child(4) { border-top-color: #a29bfe; }
+
+        .topic-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+        }
+
+        .topic-card h3 {
+            font-size: 1.4rem;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .topic-card h3 .icon { font-size: 1.5rem; }
+
+        .topic-card .topic-desc {
+            color: var(--muted);
+            margin-bottom: 1.25rem;
+            font-size: 0.97rem;
+        }
+
+        .topic-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #888;
+            margin-bottom: 0.6rem;
+            margin-top: 1rem;
+        }
+
+        .topic-episodes {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        .topic-episodes a {
+            text-decoration: none;
             color: var(--dark);
-        }
-
-        .episodes {
+            padding: 0.5rem 0.7rem;
+            border-radius: 8px;
             background: var(--light);
+            font-size: 0.92rem;
+            transition: background 0.2s ease, transform 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
 
+        .topic-episodes a::before {
+            content: "🎙";
+            font-size: 0.85rem;
+        }
+
+        .topic-episodes a:hover {
+            background: #ececec;
+            transform: translateX(3px);
+        }
+
+        .participants {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-top: 0.5rem;
+        }
+
+        .participant {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            width: 70px;
+        }
+
+        .participant .avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: var(--white);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.1rem;
+            overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .participant .avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .participant .name {
+            font-size: 0.78rem;
+            margin-top: 0.4rem;
+            color: var(--muted);
+            line-height: 1.2;
+        }
+
+        .topic-actions {
+            margin-top: auto;
+            padding-top: 1.5rem;
+        }
+
+        /* ========== Episodes ========== */
         .episode-list {
             display: flex;
             flex-direction: column;
@@ -264,9 +390,7 @@
             transition: transform 0.2s ease;
         }
 
-        .episode:hover {
-            transform: translateX(4px);
-        }
+        .episode:hover { transform: translateX(4px); }
 
         .episode-num {
             flex-shrink: 0;
@@ -279,25 +403,56 @@
             align-items: center;
             justify-content: center;
             font-weight: 700;
-            font-size: 0.85rem;
         }
 
         .episode h3 {
             font-size: 1.05rem;
             margin-bottom: 0.25rem;
-            color: var(--dark);
         }
 
-        .episode p {
-            font-size: 0.9rem;
-            color: #666;
-        }
+        .episode p { font-size: 0.9rem; color: #666; }
 
-        .listen-cta {
+        .listen-cta { text-align: center; margin-top: 3rem; }
+
+        /* ========== Forum ========== */
+        .forum-header {
             text-align: center;
-            margin-top: 3rem;
+            margin-bottom: 2rem;
         }
 
+        #forum-current {
+            display: inline-block;
+            background: var(--accent);
+            color: var(--dark);
+            padding: 0.4rem 1rem;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin-top: 0.5rem;
+        }
+
+        #giscus-container {
+            background: var(--white);
+            border-radius: var(--radius);
+            padding: 2rem;
+            box-shadow: var(--shadow);
+            min-height: 200px;
+        }
+
+        .forum-placeholder {
+            text-align: center;
+            color: var(--muted);
+            padding: 2rem 1rem;
+        }
+
+        .forum-placeholder code {
+            background: #f1f1f1;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+
+        /* ========== Footer ========== */
         footer {
             background: var(--dark);
             color: var(--white);
@@ -316,18 +471,27 @@
             text-decoration: none;
         }
 
-        footer a:hover {
-            text-decoration: underline;
-        }
+        footer a:hover { text-decoration: underline; }
 
         @media (max-width: 600px) {
-            .section {
-                padding: 3rem 1.25rem;
-            }
+            .section { padding: 3rem 1.25rem; }
+            .nav-inner { padding: 1rem 1.25rem; }
         }
     </style>
 </head>
 <body>
+    <nav>
+        <div class="nav-inner">
+            <a href="#" class="nav-logo">🎙 Skravleklassen</a>
+            <ul class="nav-links">
+                <li><a href="#om">Om</a></li>
+                <li><a href="#temaer">Temaer</a></li>
+                <li><a href="#episoder">Episoder</a></li>
+                <li><a href="#forum">Forum</a></li>
+            </ul>
+        </div>
+    </nav>
+
     <header class="hero">
         <div class="hero-content">
             <p class="badge">🎙️ Podkast · Oppdatert ukentlig</p>
@@ -340,13 +504,13 @@
             </div>
             <div class="btn-group">
                 <a href="https://podcasts.apple.com/no/podcast/skravleklassen/id1359266902" class="btn" target="_blank" rel="noopener noreferrer">Lytt på Apple Podcasts</a>
-                <a href="#om" class="btn btn-outline">Om podkasten</a>
+                <a href="#temaer" class="btn btn-outline">Utforsk temaer</a>
             </div>
         </div>
     </header>
 
     <main>
-        <section class="section about" id="om">
+        <section class="section alt-bg" id="om">
             <h2>Om podkasten</h2>
             <p class="subtitle">Utdanning · Samfunn · Idéer</p>
             <div class="about-content">
@@ -361,9 +525,6 @@
                     skikkelig skravling for deg som liker å henge med i tankerekken. Ny episode
                     kommer ut hver uke.
                 </p>
-                <p>
-                    Podkasten produseres av <strong>Moderne Media</strong> og har vært på lufta siden 2018.
-                </p>
                 <div class="hosts">
                     <span class="host-tag">Sturla Haugsgjerd</span>
                     <span class="host-tag">Anders</span>
@@ -371,29 +532,138 @@
             </div>
         </section>
 
-        <section class="section">
-            <h2>Hva handler det om?</h2>
-            <p class="subtitle">Tre grunner til å abonnere</p>
-            <div class="features">
-                <div class="card">
-                    <div class="icon">🧠</div>
-                    <h3>Dype samtaler</h3>
-                    <p>Økonomi, politikk, psykologi, religion og kultur – med gjester som vet faget sitt og tør å gå i detalj.</p>
-                </div>
-                <div class="card">
-                    <div class="icon">🎧</div>
-                    <h3>Langformat</h3>
-                    <p>Timevis med innhold per episode. Perfekt for pendling, trening eller en rolig kveld på sofaen.</p>
-                </div>
-                <div class="card">
-                    <div class="icon">📆</div>
-                    <h3>Hver uke</h3>
-                    <p>Nye episoder jevnlig. Over 180 episoder i arkivet – nok til å holde deg gående lenge.</p>
-                </div>
+        <section class="section" id="temaer">
+            <h2>Temaer</h2>
+            <p class="subtitle">Episoder samlet etter hva de handler om – med deltagere og diskusjon</p>
+
+            <div class="topics">
+                <!-- Tema: Økonomi -->
+                <article class="topic-card">
+                    <h3><span class="icon">💰</span> Økonomi &amp; politikk</h3>
+                    <p class="topic-desc">
+                        Renter, NAIRU, frontfagsmodellen og bistand. Hvordan reagerer norske husholdninger
+                        på pengepolitikk – og hva styrer egentlig den norske økonomien?
+                    </p>
+
+                    <p class="topic-label">Episoder</p>
+                    <ul class="topic-episodes">
+                        <li><a href="https://podcasts.apple.com/no/podcast/skravleklassen/id1359266902" target="_blank" rel="noopener">Olav Slettebø forklarer NAIRU</a></li>
+                        <li><a href="https://podcasts.apple.com/no/podcast/skravleklassen/id1359266902" target="_blank" rel="noopener">Rentemysteriet med Martin Blomhoff Holm</a></li>
+                        <li><a href="https://podcasts.apple.com/no/podcast/skravleklassen/id1359266902" target="_blank" rel="noopener">Hallgeir Kvadsheim – Et liv i luksus</a></li>
+                        <li><a href="https://podcasts.apple.com/no/podcast/skravleklassen/id1359266902" target="_blank" rel="noopener">Eirik Mofoss – Effektiv bistand</a></li>
+                    </ul>
+
+                    <p class="topic-label">Deltagere</p>
+                    <div class="participants">
+                        <div class="participant">
+                            <div class="avatar"><img src="images/participants/olav-slettebo.jpg" alt="Olav Slettebø" onerror="this.style.display='none';this.parentElement.textContent='OS'"></div>
+                            <span class="name">Olav<br>Slettebø</span>
+                        </div>
+                        <div class="participant">
+                            <div class="avatar"><img src="images/participants/martin-blomhoff-holm.jpg" alt="Martin Blomhoff Holm" onerror="this.style.display='none';this.parentElement.textContent='MH'"></div>
+                            <span class="name">Martin B.<br>Holm</span>
+                        </div>
+                        <div class="participant">
+                            <div class="avatar"><img src="images/participants/hallgeir-kvadsheim.jpg" alt="Hallgeir Kvadsheim" onerror="this.style.display='none';this.parentElement.textContent='HK'"></div>
+                            <span class="name">Hallgeir<br>Kvadsheim</span>
+                        </div>
+                        <div class="participant">
+                            <div class="avatar"><img src="images/participants/eirik-mofoss.jpg" alt="Eirik Mofoss" onerror="this.style.display='none';this.parentElement.textContent='EM'"></div>
+                            <span class="name">Eirik<br>Mofoss</span>
+                        </div>
+                    </div>
+
+                    <div class="topic-actions">
+                        <button type="button" class="btn btn-small" onclick="openTopic('økonomi-politikk', 'Økonomi & politikk')">Diskutér →</button>
+                    </div>
+                </article>
+
+                <!-- Tema: Tro & filosofi -->
+                <article class="topic-card">
+                    <h3><span class="icon">⛪</span> Tro &amp; filosofi</h3>
+                    <p class="topic-desc">
+                        Apokalypse, Pascals veddemål, Gud eller AI. Samtaler om tro, tvil og de store
+                        spørsmålene – fra hipsterprester til Sturlas eget åndelige veiskille.
+                    </p>
+
+                    <p class="topic-label">Episoder</p>
+                    <ul class="topic-episodes">
+                        <li><a href="https://podcasts.apple.com/no/podcast/skravleklassen/id1359266902" target="_blank" rel="noopener">Endetiden (med Benjamin)</a></li>
+                        <li><a href="https://podcasts.apple.com/no/podcast/skravleklassen/id1359266902" target="_blank" rel="noopener">Gud eller AI?</a></li>
+                    </ul>
+
+                    <p class="topic-label">Deltagere</p>
+                    <div class="participants">
+                        <div class="participant">
+                            <div class="avatar"><img src="images/participants/benjamin.jpg" alt="Benjamin" onerror="this.style.display='none';this.parentElement.textContent='B'"></div>
+                            <span class="name">Benjamin</span>
+                        </div>
+                        <div class="participant">
+                            <div class="avatar"><img src="images/participants/sturla-haugsgjerd.jpg" alt="Sturla Haugsgjerd" onerror="this.style.display='none';this.parentElement.textContent='SH'"></div>
+                            <span class="name">Sturla<br>Haugsgjerd</span>
+                        </div>
+                    </div>
+
+                    <div class="topic-actions">
+                        <button type="button" class="btn btn-small" onclick="openTopic('tro-filosofi', 'Tro & filosofi')">Diskutér →</button>
+                    </div>
+                </article>
+
+                <!-- Tema: Psyke & kunst -->
+                <article class="topic-card">
+                    <h3><span class="icon">🎨</span> Psyke &amp; kunst</h3>
+                    <p class="topic-desc">
+                        Tilknytningsmønstre, slekt, og kunsten som språkløst savn.
+                        Om hvordan vi tiltrekkes det toksiske og hva masker skjuler.
+                    </p>
+
+                    <p class="topic-label">Episoder</p>
+                    <ul class="topic-episodes">
+                        <li><a href="https://podcasts.apple.com/no/podcast/skravleklassen/id1359266902" target="_blank" rel="noopener">Kunst og Psyke (med Maja Bang)</a></li>
+                    </ul>
+
+                    <p class="topic-label">Deltagere</p>
+                    <div class="participants">
+                        <div class="participant">
+                            <div class="avatar"><img src="images/participants/maja-bang.jpg" alt="Maja Bang" onerror="this.style.display='none';this.parentElement.textContent='MB'"></div>
+                            <span class="name">Maja<br>Bang</span>
+                        </div>
+                    </div>
+
+                    <div class="topic-actions">
+                        <button type="button" class="btn btn-small" onclick="openTopic('psyke-kunst', 'Psyke & kunst')">Diskutér →</button>
+                    </div>
+                </article>
+
+                <!-- Tema: Rus & samfunn -->
+                <article class="topic-card">
+                    <h3><span class="icon">💊</span> Rus &amp; samfunn</h3>
+                    <p class="topic-desc">
+                        LAR-systemet, Evangeliesenteret og rusfeltets utvikling. Om sårbarhet,
+                        struktur og spørsmålet om ideologi som veien ut.
+                    </p>
+
+                    <p class="topic-label">Episoder</p>
+                    <ul class="topic-episodes">
+                        <li><a href="https://podcasts.apple.com/no/podcast/skravleklassen/id1359266902" target="_blank" rel="noopener">Mellom nevrobiologi og miljøterapi (Helge Waal)</a></li>
+                    </ul>
+
+                    <p class="topic-label">Deltagere</p>
+                    <div class="participants">
+                        <div class="participant">
+                            <div class="avatar"><img src="images/participants/helge-waal.jpg" alt="Helge Waal" onerror="this.style.display='none';this.parentElement.textContent='HW'"></div>
+                            <span class="name">Helge<br>Waal</span>
+                        </div>
+                    </div>
+
+                    <div class="topic-actions">
+                        <button type="button" class="btn btn-small" onclick="openTopic('rus-samfunn', 'Rus & samfunn')">Diskutér →</button>
+                    </div>
+                </article>
             </div>
         </section>
 
-        <section class="section episodes" id="episoder">
+        <section class="section alt-bg" id="episoder">
             <h2>Siste episoder</h2>
             <p class="subtitle">Et smak på det som kommer ut av skravleklasserommet</p>
             <div class="episode-list">
@@ -430,11 +700,91 @@
                 <a href="https://podcasts.apple.com/no/podcast/skravleklassen/id1359266902" class="btn" target="_blank" rel="noopener noreferrer">Se alle episoder på Apple Podcasts</a>
             </div>
         </section>
+
+        <section class="section" id="forum">
+            <div class="forum-header">
+                <h2>Diskusjon</h2>
+                <p class="subtitle">Snakk med andre lyttere – velg et tema over for å starte samtalen</p>
+                <span id="forum-current">Velg et tema fra listen for å diskutere</span>
+            </div>
+            <div id="giscus-container">
+                <div class="forum-placeholder" id="forum-placeholder">
+                    <p>👆 Klikk «Diskutér» under et tema for å laste samtalen.</p>
+                    <p style="margin-top:0.75rem;font-size:0.9rem;">
+                        Forum drives av <strong>giscus</strong> (GitHub Discussions). Krever GitHub-konto for å skrive.
+                    </p>
+                </div>
+            </div>
+        </section>
     </main>
 
     <footer>
         <p>&copy; 2026 Skravleklassen · En del av Moderne Media</p>
-        <p><a href="https://podcasts.apple.com/no/podcast/skravleklassen/id1359266902" target="_blank" rel="noopener noreferrer">Apple Podcasts</a></p>
+        <p>
+            <a href="https://podcasts.apple.com/no/podcast/skravleklassen/id1359266902" target="_blank" rel="noopener noreferrer">Apple Podcasts</a>
+            ·
+            <a href="https://github.com/AndersGravirImenes/skravleklassen" target="_blank" rel="noopener noreferrer">GitHub</a>
+        </p>
     </footer>
+
+    <script>
+        // ===== Giscus konfig =====
+        // 1. Aktiver Discussions: https://github.com/AndersGravirImenes/skravleklassen/settings → "Features" → kryss av Discussions
+        // 2. Installer giscus app: https://github.com/apps/giscus → gi tilgang til repoet
+        // 3. Gå til https://giscus.app, fyll inn repo, og kopier data-repo-id og data-category-id hit:
+        const GISCUS_CONFIG = {
+            repo: "AndersGravirImenes/skravleklassen",
+            repoId: "",          // <-- bytt ut (fra giscus.app)
+            category: "General", // eller en egen kategori
+            categoryId: "",      // <-- bytt ut (fra giscus.app)
+            mapping: "specific", // tema-spesifikke tråder via data-term
+            theme: "light"
+        };
+
+        function openTopic(slug, label) {
+            const current = document.getElementById('forum-current');
+            current.textContent = '💬 ' + label;
+
+            const container = document.getElementById('giscus-container');
+            container.innerHTML = '';
+
+            if (!GISCUS_CONFIG.repoId || !GISCUS_CONFIG.categoryId) {
+                container.innerHTML = `
+                    <div class="forum-placeholder">
+                        <p><strong>Forumet er ikke koblet opp ennå.</strong></p>
+                        <p style="margin-top:0.5rem;">Følg disse stegene for å aktivere diskusjoner for «${label}»:</p>
+                        <ol style="text-align:left;max-width:520px;margin:1rem auto;line-height:1.8;">
+                            <li>Aktiver <strong>Discussions</strong> på <code>github.com/AndersGravirImenes/skravleklassen/settings</code></li>
+                            <li>Installer <a href="https://github.com/apps/giscus" target="_blank" rel="noopener">giscus-appen</a> på repoet</li>
+                            <li>Gå til <a href="https://giscus.app" target="_blank" rel="noopener">giscus.app</a> og fyll inn repo-detaljer</li>
+                            <li>Kopier <code>data-repo-id</code> og <code>data-category-id</code> inn i <code>GISCUS_CONFIG</code> i <code>index.html</code></li>
+                        </ol>
+                    </div>
+                `;
+                document.getElementById('forum').scrollIntoView({ behavior: 'smooth' });
+                return;
+            }
+
+            const script = document.createElement('script');
+            script.src = 'https://giscus.app/client.js';
+            script.async = true;
+            script.crossOrigin = 'anonymous';
+            script.setAttribute('data-repo', GISCUS_CONFIG.repo);
+            script.setAttribute('data-repo-id', GISCUS_CONFIG.repoId);
+            script.setAttribute('data-category', GISCUS_CONFIG.category);
+            script.setAttribute('data-category-id', GISCUS_CONFIG.categoryId);
+            script.setAttribute('data-mapping', GISCUS_CONFIG.mapping);
+            script.setAttribute('data-term', slug);
+            script.setAttribute('data-strict', '0');
+            script.setAttribute('data-reactions-enabled', '1');
+            script.setAttribute('data-emit-metadata', '0');
+            script.setAttribute('data-input-position', 'top');
+            script.setAttribute('data-theme', GISCUS_CONFIG.theme);
+            script.setAttribute('data-lang', 'no');
+            container.appendChild(script);
+
+            document.getElementById('forum').scrollIntoView({ behavior: 'smooth' });
+        }
+    </script>
 </body>
 </html>

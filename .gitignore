@@ -1,2 +1,7 @@
 .DS_Store
 Thumbs.db
+
+# Sensitive
+token*.txt
+*.token
+.env
