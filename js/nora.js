@@ -55,10 +55,16 @@ function stepNora(state, ctrl, dt) {
 
     const { y, pi, L, D, F, Gb, Rprev } = state;
 
-    const Rnew =
-        Rprev * NORA_PARAMS.rhoR +
-        (1 - NORA_PARAMS.rhoR) *
-            (rTarget * Math.pow(pi / piStar, NORA_PARAMS.psiPi) * Math.pow(1 + y, NORA_PARAMS.psiY));
+    const piStarSafe = Math.max(0.005, piStar);
+    const piGap = pi - piStarSafe;
+    const yGap = clamp(y, -0.25, 0.25);
+
+    const Rtarget = rTarget + NORA_PARAMS.psiPi * piGap + NORA_PARAMS.psiY * yGap;
+    const Rnew = clamp(
+        Rprev * NORA_PARAMS.rhoR + (1 - NORA_PARAMS.rhoR) * Rtarget,
+        0.001,
+        0.2,
+    );
 
     const gpfgSpend = gpfg * 0.16;
     const fiscal = gShare * 0.32 + giShare * 0.22 + gpfgSpend + fiscalShock * 0.25;
@@ -66,12 +72,16 @@ function stepNora(state, ctrl, dt) {
 
     const dy =
         -NORA_PARAMS.sigmaIS * (Rnew - rTarget) +
-        fiscal * 0.58 +
-        oilInv * 0.12 -
-        rp * 2.5 * F -
-        0.05 * Math.max(0, y);
+        fiscal * 0.38 +
+        oilInv * 0.08 -
+        rp * 1.8 * F -
+        0.12 * yGap;
 
-    const dpi = NORA_PARAMS.beta * pi + NORA_PARAMS.kappa * y + fiscal * 0.035 + fiscalShock * 0.05;
+    const dpi =
+        NORA_PARAMS.kappa * yGap +
+        fiscal * 0.018 +
+        fiscalShock * 0.025 -
+        (1 - NORA_PARAMS.beta) * piGap;
 
     const Y = NORA_PARAMS.yPot * (1 + y);
     const mfg = 0.36 * Y;
@@ -124,9 +134,20 @@ function stepNora(state, ctrl, dt) {
         foreignBorrow: rpShock * 0.5,
     };
 
+    const yNext = clamp(y + dy * dt, -0.2, 0.2);
+    const piNext = clamp(pi + dpi * dt, -0.01, 0.1);
+
+    if (!Number.isFinite(yNext) || !Number.isFinite(piNext)) {
+        return stepNora(
+            { y: 0, pi: piStarSafe, L: 0.55, D: 0.45, F: 0.35, Gb: 0.1, Rprev: rTarget },
+            ctrl,
+            0,
+        );
+    }
+
     return {
-        y: y + dy * dt,
-        pi: clamp(pi + dpi * dt, -0.02, 0.12),
+        y: yNext,
+        pi: piNext,
         L: clamp(L + dL, 0.1, 1.4),
         D: clamp(D + dD, 0.1, 1.2),
         F: clamp(F + dF, 0, 1.2),
@@ -371,11 +392,13 @@ function initNora() {
     const history = { y: [], pi: [], c: [] };
 
     let running = true;
+    let rafId = 0;
     let reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const ctx = canvas.getContext('2d');
     let w = 0;
     let h = 0;
     let dpr = 1;
+    const isStandalone = document.body?.classList.contains('nora-page') || section.tagName === 'MAIN';
 
     function resize() {
         const rect = canvas.getBoundingClientRect();
@@ -399,11 +422,11 @@ function initNora() {
 
     function updateHud() {
         const ctrl = readControls();
-        hud.y.textContent = `${(derived.y * 100).toFixed(1)}%`;
-        hud.pi.textContent = `${(derived.pi * 100).toFixed(2)}%`;
-        hud.c.textContent = `${(derived.flows.cAgg * 100).toFixed(0)}`;
-        hud.u.textContent = `${(derived.u * 100).toFixed(1)}%`;
-        hud.status.textContent = noraStatus(derived, ctrl);
+        if (hud.y) hud.y.textContent = `${(derived.y * 100).toFixed(1)}%`;
+        if (hud.pi) hud.pi.textContent = `${(derived.pi * 100).toFixed(2)}%`;
+        if (hud.c) hud.c.textContent = `${(derived.flows.cAgg * 100).toFixed(0)}`;
+        if (hud.u) hud.u.textContent = `${(derived.u * 100).toFixed(1)}%`;
+        if (hud.status) hud.status.textContent = noraStatus(derived, ctrl);
         updateDiagramFlows(diagramSvg, derived.flows);
     }
 
@@ -417,7 +440,8 @@ function initNora() {
             ctx.stroke();
         }
 
-        const all = [...history.y, ...history.pi];
+        const all = [...history.y, ...history.pi].filter(Number.isFinite);
+        if (all.length < 2) return;
         let minV = Math.min(...all, -0.06);
         let maxV = Math.max(...all, 0.06);
         const pad = (maxV - minV) * 0.15 || 0.04;
@@ -508,11 +532,33 @@ function initNora() {
 
     let last = performance.now();
     function loop(now) {
-        if (!running) return;
-        const dt = Math.min(0.05, (now - last) / 1000);
-        last = now;
-        tick(reducedMotion ? 0.01 : 0.032);
-        requestAnimationFrame(loop);
+        if (!running) {
+            rafId = 0;
+            return;
+        }
+        if (!document.hidden) {
+            const dt = Math.min(0.05, Math.max(0.001, (now - last) / 1000));
+            last = now;
+            try {
+                tick(reducedMotion ? dt * 0.35 : dt);
+            } catch (err) {
+                console.error('NORA tick:', err);
+            }
+        }
+        rafId = requestAnimationFrame(loop);
+    }
+
+    function startLoop() {
+        if (rafId) cancelAnimationFrame(rafId);
+        last = performance.now();
+        rafId = requestAnimationFrame(loop);
+    }
+
+    function stopLoop() {
+        if (rafId) {
+            cancelAnimationFrame(rafId);
+            rafId = 0;
+        }
     }
 
     document.getElementById('nora-reset')?.addEventListener('click', () => {
@@ -526,30 +572,31 @@ function initNora() {
 
     document.getElementById('nora-pause')?.addEventListener('click', () => {
         running = !running;
-        if (running) {
-            last = performance.now();
-            requestAnimationFrame(loop);
-        }
+        if (running) startLoop();
+        else stopLoop();
     });
 
-    const observer = new IntersectionObserver(
-        (entries) => {
-            entries.forEach((e) => {
-                if (e.isIntersecting && running) {
-                    last = performance.now();
-                    requestAnimationFrame(loop);
-                }
-            });
-        },
-        { threshold: 0.12 },
-    );
-    observer.observe(section);
+    if (!isStandalone) {
+        const observer = new IntersectionObserver(
+            (entries) => {
+                const visible = entries.some((e) => e.isIntersecting);
+                if (visible && running) startLoop();
+                else if (!visible) stopLoop();
+            },
+            { threshold: 0.08, rootMargin: '80px' },
+        );
+        observer.observe(section);
+    }
+
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && running) startLoop();
+    });
 
     resize();
     pushHistory();
     updateHud();
     draw();
-    requestAnimationFrame(loop);
+    startLoop();
 
     let resizeTO;
     window.addEventListener('resize', () => {
