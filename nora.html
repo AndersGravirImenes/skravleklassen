@@ -92,6 +92,7 @@
                         <input type="checkbox" id="nora-frontfag" checked>
                         <span>Frontfagsmodell (lønnskurve · industri setter norm)</span>
                     </label>
+                    <p class="nora-toggle-hint">På: industri setter normlønn, treg reallønn og lønnskurve mot arbeids etterspørsel. Av: lønn og ledighet følger BNP direkte (fleksibel lønn).</p>
                 </div>
                 <fieldset class="nora-fieldset" id="nora-frontfag-fields">
                     <legend>Frontfag / lønnsdannelse</legend>
@@ -101,6 +102,7 @@
                             <span class="value" id="nora-wage-stick-val">75%</span>
                         </header>
                         <input type="range" id="nora-wage-stick" min="40" max="98" value="75">
+                        <p class="nora-control-hint">Hvor sakte reallønnen W tilpasser seg normlønnen fra industrien. Høyere verdi = mer treg lønnsdannelse og lengre avvik fra likevekt.</p>
                     </div>
                     <div class="nora-control">
                         <header>
@@ -108,6 +110,7 @@
                             <span class="value" id="nora-wage-shock-val">0%</span>
                         </header>
                         <input type="range" id="nora-wage-shock" min="0" max="100" value="0">
+                        <p class="nora-control-hint">Midlertidig løft i frontfagsforhandlingene som presser normlønnen og reallønnen opp — kan gi høyere inflasjon og ledighet.</p>
                     </div>
                 </fieldset>
                 <div class="nora-control">
@@ -116,6 +119,7 @@
                         <span class="value" id="nora-omega-val">38%</span>
                     </header>
                     <input type="range" id="nora-omega" min="15" max="70" value="38">
+                    <p class="nora-control-hint">Andel likviditetsbegrensede husholdninger som bruker inntekten med én gang. Høyere ω gir mer forbrukssvingninger og mindre sparing i diagrammet.</p>
                 </div>
                 <div class="nora-control">
                     <header>
@@ -123,6 +127,7 @@
                         <span class="value" id="nora-rate-val">4.5%</span>
                     </header>
                     <input type="range" id="nora-rate" min="0" max="90" step="5" value="45">
+                    <p class="nora-control-hint">Nominell styringsrente som sentralbanken sikter mot. Taylor-regelen justerer den videre når inflasjon eller output gap avviker.</p>
                 </div>
                 <div class="nora-control">
                     <header>
@@ -130,6 +135,7 @@
                         <span class="value" id="nora-pi-target-val">2.0%</span>
                     </header>
                     <input type="range" id="nora-pi-target" min="0" max="50" step="5" value="20">
+                    <p class="nora-control-hint">Målinflasjon for KPI. Rente strammes når π ligger over målet, og løsnes når den er for lav.</p>
                 </div>
                 <div class="nora-control">
                     <header>
@@ -137,6 +143,7 @@
                         <span class="value" id="nora-g-val">22%</span>
                     </header>
                     <input type="range" id="nora-g" min="10" max="45" value="22">
+                    <p class="nora-control-hint">Statens forbruksandel av fastlands-BNP. Mer G løfter etterspørsel, overføringer og noe inflasjon i modellen.</p>
                 </div>
                 <div class="nora-control">
                     <header>
@@ -144,6 +151,7 @@
                         <span class="value" id="nora-i-val">12%</span>
                     </header>
                     <input type="range" id="nora-i" min="5" max="30" value="12">
+                    <p class="nora-control-hint">Offentlig investeringsandel. Styrker samlet I og etterspørsel etter varer og tjenester på fastlandet.</p>
                 </div>
                 <div class="nora-control">
                     <header>
@@ -151,6 +159,7 @@
                         <span class="value" id="nora-oil-val">50%</span>
                     </header>
                     <input type="range" id="nora-oil" min="0" max="100" value="50">
+                    <p class="nora-control-hint">Hvor mye oljeinntekter kanaliseres til investering i fastlandsvarer (petroleum → I). Høyere verdi gir mer etterspørsel og litt lavere utenlands rente i modellen.</p>
                 </div>
                 <div class="nora-control">
                     <header>
@@ -158,6 +167,7 @@
                         <span class="value" id="nora-gpfg-val">35%</span>
                     </header>
                     <input type="range" id="nora-gpfg" min="0" max="80" value="35">
+                    <p class="nora-control-hint">Andel av oljefondet som brukes i statsbudsjettet. Mer uttak gir overføringer, offentlig etterspørsel og svakere offentlig saldo.</p>
                 </div>
                 <div class="nora-control">
                     <header>
@@ -165,6 +175,7 @@
                         <span class="value" id="nora-fiscal-val">0%</span>
                     </header>
                     <input type="range" id="nora-fiscal" min="0" max="100" value="0">
+                    <p class="nora-control-hint">Ekstra, midlertidig finanspolitisk impuls utover G og I. Løfter BNP og inflasjon når du vil simulere en konjunkturpakke.</p>
                 </div>
                 <div class="nora-control">
                     <header>
@@ -172,6 +183,7 @@
                         <span class="value" id="nora-foreign-val">25%</span>
                     </header>
                     <input type="range" id="nora-foreign" min="0" max="80" value="25">
+                    <p class="nora-control-hint">Risikopremie når banker låner i utlandet. Høyere RP strammer finans, demper investering og kan svekke output gap og valutastrømmer.</p>
                 </div>
                 <div class="nora-actions">
                     <button type="button" class="btn" id="nora-reset">› Nullstill modell</button>
