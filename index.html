@@ -1132,7 +1132,9 @@
 
             .moniac-control--gov,
             .moniac-control--pump,
-            .moniac-control--tax {
+            .moniac-control--tax,
+            .moniac-control--mpc,
+            .moniac-control--save {
                 grid-column: 1 / -1;
             }
         }
@@ -1652,7 +1654,9 @@
             <p class="moniac-note">
                 Bill Phillips’ maskin (1949) møter <strong>Arrakis</strong>: total spice-høst (<strong>Y</strong>),
                 skattesats (<strong>t</strong>), MPC (<strong>c</strong>),
-                sparing til sietch (<strong>s</strong>) og importlekkasje (<strong>m</strong>) — egne glidere;
+                sparing til sietch (<strong>s</strong>) og importlekkasje (<strong>m</strong>);
+                <strong>c</strong> og <strong>s</strong> deler det som ikke går til <strong>t</strong> og <strong>m</strong>
+                (<strong>c + s = 1 − t − m</strong>) og beveger seg motsatt;
                 offentlig forbruk fra statskassen (<strong>G</strong>), investering fra banktank (<strong>I</strong>),
                 autonom eksport (<strong>X</strong>) via harvester (<strong>P</strong>).
                 Sub-tanker: statskasse (skatt <strong>t</strong>), sietch-bank (<strong>s</strong>), utland (<strong>m</strong>).
@@ -1724,14 +1728,20 @@
                         </header>
                         <input type="range" id="moniac-tax" min="10" max="55" value="28" aria-valuemin="10" aria-valuemax="55">
                     </div>
-                    <div class="moniac-control">
+                    <div class="moniac-control moniac-control--mpc">
+                        <figure class="moniac-control-illus">
+                            <img src="images/moniac/harkonnen.webp" alt="Harkonnen — illustrasjon til MPC (c)" width="320" height="180" loading="lazy" decoding="async">
+                        </figure>
                         <header>
                             <label for="moniac-mpc">c — MPC</label>
-                            <span class="value" id="moniac-mpc-val">48%</span>
+                            <span class="value" id="moniac-mpc-val">38%</span>
                         </header>
-                        <input type="range" id="moniac-mpc" min="20" max="85" value="48" aria-valuemin="20" aria-valuemax="85">
+                        <input type="range" id="moniac-mpc" min="5" max="50" value="38" aria-valuemin="5" aria-valuemax="50">
                     </div>
-                    <div class="moniac-control">
+                    <div class="moniac-control moniac-control--save">
+                        <figure class="moniac-control-illus">
+                            <img src="images/moniac/spice-silos-dune.webp" alt="Spice-siloer — illustrasjon til sparerate s (sietch)" width="320" height="180" loading="lazy" decoding="async">
+                        </figure>
                         <header>
                             <label for="moniac-save">s — Sparerate (sietch)</label>
                             <span class="value" id="moniac-save-val">12%</span>

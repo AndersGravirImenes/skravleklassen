@@ -1,6 +1,8 @@
 .DS_Store
 Thumbs.db
 _vendor/
+sim/node_modules/
+sim/dist/
 
 # Sensitive
 token*.txt

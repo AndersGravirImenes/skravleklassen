@@ -84,24 +84,29 @@ function exportFromRate(rate) {
     return MACRO.X_BASE + rate * MACRO.X_RATE_SCALE;
 }
 
+/** Andel av Y som kan fordeles mellom forbruk (c) og sparing (s) etter skatt og import */
+function privateRoom(t, m) {
+    return Math.max(0, 1 - t - m);
+}
+
+/**
+ * c og s er komplementer: c + s = 1 − t − m (beveger seg motsatt).
+ */
+function coupleConsumptionSaving(t, m, mpc, save) {
+    const room = privateRoom(t, m);
+    const c = Math.max(0, Math.min(room, mpc));
+    const s = Math.max(0, room - c);
+    return { c, s, room };
+}
+
 /**
  * Parametre fra glidere → ventiler i MONIAC.
- * Normaliseres hvis t+c+s+m > 1 (summerer til mer enn 100 % lekkasje).
  */
 function tankParams(controls) {
-    let t = controls.tax;
-    let c = controls.mpc;
-    let s = controls.save;
-    let m = controls.import;
-    const sum = t + c + s + m;
-    const normalized = sum > 1.001;
-    if (normalized) {
-        const k = 1 / sum;
-        t *= k;
-        c *= k;
-        s *= k;
-        m *= k;
-    }
+    const t = controls.tax;
+    const m = controls.import;
+    const { c, s } = coupleConsumptionSaving(t, m, controls.mpc, controls.save);
+    const normalized = t + m > 1.001;
     const rateGap = Math.max(0, controls.rate - MACRO.R_NEUTRAL);
     const I_rate = MACRO.I_BASE * Math.max(MACRO.I_FLOOR, 1 - MACRO.R_SENS * rateGap);
     return {
@@ -114,7 +119,7 @@ function tankParams(controls) {
         X: exportFromRate(controls.rate),
         rate: controls.rate,
         normalized,
-        rawSum: sum,
+        rawSum: t + c + s + m,
     };
 }
 
@@ -204,7 +209,7 @@ function macroStatus(Y, equilGap, uPct, tanks, p) {
     if (tanks.GovtTank < 0.02 && equilGap > 0.02) return 'STATSAPPARAT TØMT — G BREMSER';
     if (tanks.BankTank < 0.02 && equilGap > 0.02) return 'SIETCH-TØMT — I BREMSER';
     if (tanks.ForeignTank > 0.12) return 'IMPORTLEKKASJE — UTLAND FYLLER';
-    if (p?.normalized) return 'VENTILER > 100% — STRØMMER NORMALISERT';
+    if (p?.normalized) return 't + m > 100% — INGEN ROM FOR c + s';
     if (uPct > MACRO.NAIRU * 100 + 2.5) return 'SIETCH-TAPT KAPASITET';
     if (equilGap > 0.03) return 'LEKKASJE > INJEKSJON — Y SINKER';
     if (equilGap < -0.03) return 'INJEKSJON > LEKKASJE — Y STIGER';
@@ -242,7 +247,7 @@ function initMoniac() {
         importLeaks: document.getElementById('moniac-import-val'),
     };
 
-    const _initC = { gov: 0.35, rate: 0.045, tax: 0.28, mpc: 0.48, save: 0.12, import: 0.22 };
+    const _initC = { gov: 0.35, rate: 0.045, tax: 0.28, mpc: 0.38, save: 0.12, import: 0.22 };
     const _initP = tankParams(_initC);
     const tanks = createInitialTanks(_initP);
     const _initStep = stepTanks(tanks, _initP, 0);
@@ -417,34 +422,57 @@ function initMoniac() {
                 break;
             }
             case 'guild': {
-                const hull = new THREE.Mesh(
-                    new THREE.ConeGeometry(1.2, 0.8, 4),
-                    new THREE.MeshStandardMaterial({ color: 0x2a3540, metalness: 0.6, roughness: 0.35 })
+                const portraitH = 1.55;
+                new THREE.TextureLoader().load(
+                    'images/moniac/harkonnen.webp',
+                    (tex) => {
+                        tex.colorSpace = THREE.SRGBColorSpace;
+                        const aspect = tex.image.width / Math.max(1, tex.image.height);
+                        const frame = new THREE.Mesh(
+                            new THREE.PlaneGeometry(aspect * portraitH, portraitH),
+                            new THREE.MeshBasicMaterial({
+                                map: tex,
+                                transparent: true,
+                                depthWrite: false,
+                            })
+                        );
+                        frame.position.set(0, portraitH / 2 + 0.15, 0.5);
+                        group.add(frame);
+                    }
                 );
-                hull.rotation.y = Math.PI / 4;
-                hull.position.y = 0.5;
-                group.add(hull);
-                const glow = new THREE.Mesh(
-                    new THREE.SphereGeometry(0.55, 12, 12),
-                    new THREE.MeshStandardMaterial({ color: GUILD, emissive: GUILD, emissiveIntensity: 0.8, transparent: true, opacity: 0.7 })
+                const plinth = new THREE.Mesh(
+                    new THREE.BoxGeometry(1.2, 0.3, 0.75),
+                    new THREE.MeshStandardMaterial({ color: GUILD, emissive: GUILD, emissiveIntensity: 0.25, roughness: 0.7 })
                 );
-                glow.position.y = 0.9;
-                group.add(glow);
+                plinth.position.y = 0.15;
+                group.add(plinth);
                 fill = createFill(def.color, 0.5, 0.8);
                 fill.position.y = 0.35;
                 portY = 0.6;
                 break;
             }
             case 'sietch': {
-                const dome = new THREE.Mesh(
-                    new THREE.SphereGeometry(1.1, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2),
-                    new THREE.MeshStandardMaterial({ color: SIETCH, roughness: 0.85 })
-                );
-                dome.position.y = -0.15;
-                group.add(dome);
                 const mound = new THREE.Mesh(new THREE.ConeGeometry(1.5, 0.5, 12), sandMat);
                 mound.position.y = -0.35;
                 group.add(mound);
+                const siloH = 1.65;
+                new THREE.TextureLoader().load(
+                    'images/moniac/spice-silos-dune.webp',
+                    (tex) => {
+                        tex.colorSpace = THREE.SRGBColorSpace;
+                        const aspect = tex.image.width / Math.max(1, tex.image.height);
+                        const silo = new THREE.Mesh(
+                            new THREE.PlaneGeometry(aspect * siloH, siloH),
+                            new THREE.MeshBasicMaterial({
+                                map: tex,
+                                transparent: true,
+                                depthWrite: false,
+                            })
+                        );
+                        silo.position.set(0, siloH / 2 + 0.1, 0.45);
+                        group.add(silo);
+                    }
+                );
                 fill = createFill(def.color, 0.7, 0.6);
                 fill.position.y = 0.1;
                 portY = 0.5;
@@ -612,14 +640,39 @@ function initMoniac() {
     buildDust(reducedMotion ? 60 : 180);
 
     function readControls() {
+        const tax = Number(controls.tax.value) / 100;
+        const importLeaks = Number(controls.importLeaks.value) / 100;
+        const mpc = Number(controls.mpc.value) / 100;
+        const { c, s } = coupleConsumptionSaving(tax, importLeaks, mpc, Number(controls.save.value) / 100);
         return {
             gov: Number(controls.gov.value) / 100,
             rate: Number(controls.rate.value) / 100,
-            tax: Number(controls.tax.value) / 100,
-            mpc: Number(controls.mpc.value) / 100,
-            save: Number(controls.save.value) / 100,
-            import: Number(controls.importLeaks.value) / 100,
+            tax,
+            mpc: c,
+            save: s,
+            import: importLeaks,
         };
+    }
+
+    function syncPrivateSliders(from) {
+        const tax = Number(controls.tax.value) / 100;
+        const importLeaks = Number(controls.importLeaks.value) / 100;
+        const room = privateRoom(tax, importLeaks);
+        const maxPct = Math.round(room * 100);
+        controls.mpc.max = String(Math.max(5, maxPct));
+        controls.save.max = String(Math.max(0, maxPct));
+
+        if (from === 'save') {
+            const s = Number(controls.save.value) / 100;
+            controls.mpc.value = String(Math.round(Math.max(0, room - s) * 100));
+        } else {
+            let c = Number(controls.mpc.value) / 100;
+            if (c > room) {
+                c = room;
+                controls.mpc.value = String(maxPct);
+            }
+            controls.save.value = String(Math.round(Math.max(0, room - c) * 100));
+        }
     }
 
     function updateLabels(c) {
@@ -682,9 +735,10 @@ function initMoniac() {
         }
 
         setNodeLevel(nodes.Y, Y);
-        setNodeLevel(nodes.C, f.C / Math.max(0.08, Y * MACRO.FLOW_GAIN));
+        const privateShare = Math.max(0.05, privateRoom(p.t, p.m));
+        setNodeLevel(nodes.C, p.c / privateShare);
         setNodeLevel(nodes.T, state.tanks.GovtTank / Math.max(0.12, Y));
-        setNodeLevel(nodes.S, state.tanks.BankTank / Math.max(0.1, Y * 0.5));
+        setNodeLevel(nodes.S, p.s / privateShare);
         setNodeLevel(nodes.G, Math.min(1, state.tanks.GovtTank / 0.2));
         setNodeLevel(nodes.I, Math.min(1, f.iFlow / 0.15));
         setNodeLevel(nodes.P, state.P);
@@ -803,19 +857,29 @@ function initMoniac() {
         bloomPass?.resolution.set(width, height);
     }
 
-    Object.values(controls).forEach((el) => {
-        el?.addEventListener('input', () => {
-            updateLabels(readControls());
-            if (reducedMotion) renderStill();
-        });
+    const onControlInput = (from) => {
+        if (from === 'mpc' || from === 'save' || from === 'tax' || from === 'import') {
+            syncPrivateSliders(from);
+        }
+        updateLabels(readControls());
+        if (reducedMotion) renderStill();
+    };
+
+    controls.mpc?.addEventListener('input', () => onControlInput('mpc'));
+    controls.save?.addEventListener('input', () => onControlInput('save'));
+    controls.tax?.addEventListener('input', () => onControlInput('tax'));
+    controls.importLeaks?.addEventListener('input', () => onControlInput('import'));
+    [controls.gov, controls.rate].forEach((el) => {
+        el?.addEventListener('input', () => onControlInput());
     });
 
     document.getElementById('moniac-reset')?.addEventListener('click', () => {
         controls.gov.value = 35;
         controls.rate.value = 4.5;
         controls.tax.value = 28;
-        controls.mpc.value = 48;
+        controls.mpc.value = 38;
         controls.save.value = 12;
+        syncPrivateSliders('mpc');
         controls.importLeaks.value = 22;
         const c0 = readControls();
         const p0 = tankParams(c0);
@@ -844,6 +908,7 @@ function initMoniac() {
     }, { threshold: 0.1 });
     observer.observe(panel);
 
+    syncPrivateSliders('mpc');
     resize();
     updateLabels(readControls());
     if (reducedMotion) renderStill();
