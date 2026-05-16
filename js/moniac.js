@@ -1,13 +1,45 @@
 /**
- * MONIAC — Phillips-maskin (hydraulisk makromodell)
- * Forenklet Keynesiansk sirkulasjonsmodell med visuell strøm.
+ * MONIAC 3D — Phillips-maskin i Blade Runner 2049-estetikk
  */
-(function initMoniac() {
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+const COLORS = {
+    income: 0xff9a3c,
+    consume: 0xff4d8b,
+    tax: 0xff5c00,
+    save: 0xc8a890,
+    gov: 0xffc857,
+    invest: 0xffb347,
+};
+
+const TANK_DEFS = [
+    { id: 'G', label: 'G', sub: 'OFFENTLIG', pos: [-3.2, 0, -2.4], color: COLORS.gov },
+    { id: 'C', label: 'C', sub: 'FORBRUK', pos: [-3.2, 0, 2.4], color: COLORS.consume },
+    { id: 'Y', label: 'Y', sub: 'NASJONALINNTEKT', pos: [0, 0, 0], color: COLORS.income, hub: true },
+    { id: 'T', label: 'T', sub: 'SKATT', pos: [3.2, 0, -2.4], color: COLORS.tax },
+    { id: 'I', label: 'I', sub: 'INVESTERING', pos: [3.2, 0, 0], color: COLORS.invest },
+    { id: 'S', label: 'S', sub: 'SPARING', pos: [3.2, 0, 2.4], color: COLORS.save },
+];
+
+const PIPES = [
+    { from: 'G', to: 'Y', color: COLORS.gov },
+    { from: 'I', to: 'Y', color: COLORS.invest },
+    { from: 'Y', to: 'C', color: COLORS.consume },
+    { from: 'Y', to: 'T', color: COLORS.tax },
+    { from: 'Y', to: 'S', color: COLORS.save },
+    { from: 'C', to: 'Y', color: COLORS.consume },
+];
+
+function initMoniac() {
     const canvas = document.getElementById('moniac-canvas');
     const panel = document.getElementById('moniac');
     if (!canvas || !panel) return;
 
-    const ctx = canvas.getContext('2d');
     const hud = {
         bnp: document.getElementById('moniac-bnp'),
         ledighet: document.getElementById('moniac-ledighet'),
@@ -29,23 +61,330 @@
         mpc: document.getElementById('moniac-mpc-val'),
     };
 
-    const COLORS = {
-        income: { fill: '#ff9a3c', glow: 'rgba(255, 154, 60, 0.65)', pipe: '#ff9a3c' },
-        consume: { fill: '#ff4d8b', glow: 'rgba(255, 77, 139, 0.55)', pipe: '#ff4d8b' },
-        tax: { fill: '#ff5c00', glow: 'rgba(255, 92, 0, 0.5)', pipe: '#ff5c00' },
-        save: { fill: '#c8a890', glow: 'rgba(200, 168, 144, 0.45)', pipe: '#8a6e58' },
-        gov: { fill: '#ffc857', glow: 'rgba(255, 200, 87, 0.55)', pipe: '#ffc857' },
-        invest: { fill: '#ffb347', glow: 'rgba(255, 179, 71, 0.55)', pipe: '#ffb347' },
+    const state = { Y: 0.42, C: 0.3, T: 0.18, S: 0.15, G: 0.2, I: 0.22 };
+    const tanks = {};
+    const pipeMeshes = [];
+    let flowParticles = [];
+    let dustParticles;
+    let running = true;
+    let reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0a0604);
+    scene.fog = new THREE.FogExp2(0x1a0c08, 0.045);
+
+    const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 80);
+    camera.position.set(7.5, 5.2, 9.5);
+
+    const renderer = new THREE.WebGLRenderer({
+        canvas,
+        antialias: true,
+        alpha: false,
+        powerPreference: 'high-performance',
+    });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, reducedMotion ? 1 : 2));
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.25;
+    renderer.shadowMap.enabled = !reducedMotion;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+    let composer = null;
+    let bloomPass = null;
+    if (!reducedMotion) {
+        composer = new EffectComposer(renderer);
+        composer.addPass(new RenderPass(scene, camera));
+        bloomPass = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.62, 0.42, 0.18);
+        composer.addPass(bloomPass);
+    }
+
+    const labelRenderer = new CSS2DRenderer();
+    labelRenderer.domElement.style.position = 'absolute';
+    labelRenderer.domElement.style.inset = '0';
+    labelRenderer.domElement.style.pointerEvents = 'none';
+    canvas.parentElement.appendChild(labelRenderer.domElement);
+
+    const orbit = new OrbitControls(camera, canvas);
+    orbit.enableDamping = true;
+    orbit.dampingFactor = 0.06;
+    orbit.minDistance = 6;
+    orbit.maxDistance = 18;
+    orbit.maxPolarAngle = Math.PI / 2.05;
+    orbit.target.set(0, 0.8, 0);
+    orbit.autoRotate = !reducedMotion;
+    orbit.autoRotateSpeed = 0.35;
+
+    // —— Lighting (Las Vegas orange haze) ——
+    scene.add(new THREE.AmbientLight(0xffc4a0, 0.25));
+    const keyLight = new THREE.DirectionalLight(0xff9a3c, 1.1);
+    keyLight.position.set(5, 12, 4);
+    keyLight.castShadow = true;
+    keyLight.shadow.mapSize.set(1024, 1024);
+    scene.add(keyLight);
+
+    const rimPink = new THREE.PointLight(0xff4d8b, 2.2, 22);
+    rimPink.position.set(-6, 3, 4);
+    scene.add(rimPink);
+
+    const rimAmber = new THREE.PointLight(0xff5c00, 1.8, 20);
+    rimAmber.position.set(6, 2, -5);
+    scene.add(rimAmber);
+
+    const hubGlow = new THREE.PointLight(0xff9a3c, 1.4, 8);
+    hubGlow.position.set(0, 1.5, 0);
+    scene.add(hubGlow);
+
+    // —— Floor grid (2049 wasteland platform) ——
+    const floorGeo = new THREE.PlaneGeometry(24, 24, 24, 24);
+    const floorMat = new THREE.MeshStandardMaterial({
+        color: 0x160c08,
+        metalness: 0.85,
+        roughness: 0.35,
+        emissive: 0xff5c00,
+        emissiveIntensity: 0.04,
+    });
+    const floor = new THREE.Mesh(floorGeo, floorMat);
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = -1.35;
+    floor.receiveShadow = true;
+    scene.add(floor);
+
+    const grid = new THREE.GridHelper(22, 44, 0xff9a3c, 0x3d2018);
+    grid.position.y = -1.34;
+    grid.material.opacity = 0.35;
+    grid.material.transparent = true;
+    scene.add(grid);
+
+    const pedestal = new THREE.Mesh(
+        new THREE.CylinderGeometry(4.2, 4.6, 0.35, 6),
+        new THREE.MeshStandardMaterial({
+            color: 0x25140e,
+            metalness: 0.7,
+            roughness: 0.4,
+            emissive: 0xff5c00,
+            emissiveIntensity: 0.06,
+        })
+    );
+    pedestal.position.y = -1.15;
+    pedestal.receiveShadow = true;
+    scene.add(pedestal);
+
+    // —— Tanks ——
+    const TANK_W = 1.15;
+    const TANK_H = 2.2;
+    const TANK_D = 1.15;
+
+    function createTank(def) {
+        const group = new THREE.Group();
+        group.position.set(def.pos[0], def.pos[1], def.pos[2]);
+
+        const glass = new THREE.Mesh(
+            new THREE.BoxGeometry(TANK_W, TANK_H, TANK_D),
+            new THREE.MeshPhysicalMaterial({
+                color: 0x2a1410,
+                metalness: 0.15,
+                roughness: 0.08,
+                transmission: 0.72,
+                thickness: 0.4,
+                transparent: true,
+                opacity: 0.55,
+                envMapIntensity: 1,
+            })
+        );
+        glass.castShadow = true;
+        group.add(glass);
+
+        const liquid = new THREE.Mesh(
+            new THREE.BoxGeometry(TANK_W * 0.82, 0.1, TANK_D * 0.82),
+            new THREE.MeshStandardMaterial({
+                color: def.color,
+                emissive: def.color,
+                emissiveIntensity: 0.55,
+                metalness: 0.3,
+                roughness: 0.2,
+                transparent: true,
+                opacity: 0.92,
+            })
+        );
+        group.add(liquid);
+
+        const frame = new THREE.LineSegments(
+            new THREE.EdgesGeometry(new THREE.BoxGeometry(TANK_W + 0.06, TANK_H + 0.06, TANK_D + 0.06)),
+            new THREE.LineBasicMaterial({ color: def.color, transparent: true, opacity: 0.85 })
+        );
+        group.add(frame);
+
+        if (def.hub) {
+            const ring = new THREE.Mesh(
+                new THREE.TorusGeometry(1.35, 0.03, 8, 48),
+                new THREE.MeshStandardMaterial({
+                    color: COLORS.income,
+                    emissive: COLORS.income,
+                    emissiveIntensity: 1.2,
+                    metalness: 0.9,
+                    roughness: 0.2,
+                })
+            );
+            ring.rotation.x = Math.PI / 2;
+            ring.position.y = 0.2;
+            group.add(ring);
+
+            const ring2 = ring.clone();
+            ring2.scale.set(1.15, 1.15, 1.15);
+            ring2.material = ring2.material.clone();
+            ring2.material.emissiveIntensity = 0.4;
+            ring2.material.opacity = 0.5;
+            ring2.material.transparent = true;
+            group.add(ring2);
+        }
+
+        const labelEl = document.createElement('div');
+        labelEl.className = 'moniac-label';
+        labelEl.innerHTML = `${def.label}<small>${def.sub}</small>`;
+        const labelObj = new CSS2DObject(labelEl);
+        labelObj.position.set(0, TANK_H / 2 + 0.55, 0);
+        group.add(labelObj);
+
+        scene.add(group);
+        return { group, liquid, glass, TANK_H, id: def.id, color: def.color };
+    }
+
+    TANK_DEFS.forEach((def) => {
+        tanks[def.id] = createTank(def);
+    });
+
+    function setTankLevel(tank, level) {
+        const lvl = Math.max(0.08, Math.min(0.95, level));
+        const h = tank.TANK_H * lvl * 0.92;
+        tank.liquid.scale.y = h / 0.1;
+        tank.liquid.position.y = -tank.TANK_H / 2 + h / 2 + 0.05;
+        const pulse = 0.55 + lvl * 0.35;
+        tank.liquid.material.emissiveIntensity = pulse;
+    }
+
+    // —— Pipes ——
+    const PORT = {
+        top: [0, TANK_H / 2, 0],
+        bottom: [0, -TANK_H / 2, 0],
+        left: [-TANK_W / 2, 0, 0],
+        right: [TANK_W / 2, 0, 0],
     };
 
-    const state = { Y: 0.42, C: 0.3, T: 0.18, S: 0.15, G: 0.2, I: 0.22 };
-    let particles = [];
-    let w = 800;
-    let h = 520;
-    let dpr = 1;
-    let running = true;
-    let layout = null;
+    function portWorld(id, side) {
+        const t = tanks[id];
+        if (!t) return new THREE.Vector3();
+        const off = PORT[side] || [0, 0, 0];
+        const gp = t.group.position;
+        return new THREE.Vector3(gp.x + off[0], gp.y + off[1], gp.z + off[2]);
+    }
 
+    function mid(a, b, yLift = 0.4) {
+        return new THREE.Vector3(
+            (a.x + b.x) * 0.5,
+            Math.max(a.y, b.y) + yLift,
+            (a.z + b.z) * 0.5
+        );
+    }
+
+    function pipePath(from, to) {
+        const paths = {
+            'G-Y': () => {
+                const a = portWorld('G', 'right');
+                const b = portWorld('Y', 'left');
+                return [a, mid(a, b, 0.5), b];
+            },
+            'I-Y': () => {
+                const a = portWorld('I', 'left');
+                const b = portWorld('Y', 'right');
+                return [a, mid(a, b, 0.5), b];
+            },
+            'Y-C': () => {
+                const a = portWorld('Y', 'left');
+                const b = portWorld('C', 'top');
+                return [a, mid(a, b, 0.35), b];
+            },
+            'Y-T': () => {
+                const a = portWorld('Y', 'top');
+                const b = portWorld('T', 'bottom');
+                return [a, mid(a, b, 0.8), b];
+            },
+            'Y-S': () => {
+                const a = portWorld('Y', 'right');
+                const b = portWorld('S', 'top');
+                return [a, mid(a, b, 0.35), b];
+            },
+            'C-Y': () => {
+                const a = portWorld('C', 'right');
+                const b = portWorld('Y', 'bottom');
+                return [a, mid(a, b, 0.25), b];
+            },
+        };
+        const fn = paths[`${from}-${to}`];
+        if (fn) return fn();
+        return [portWorld(from, 'bottom'), portWorld(to, 'top')];
+    }
+
+    PIPES.forEach((p) => {
+        const pts = pipePath(p.from, p.to);
+        const curve = new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.35);
+        const tube = new THREE.Mesh(
+            new THREE.TubeGeometry(curve, 32, 0.07, 8, false),
+            new THREE.MeshStandardMaterial({
+                color: 0x1a0c08,
+                metalness: 0.9,
+                roughness: 0.25,
+                emissive: p.color,
+                emissiveIntensity: 0.15,
+                transparent: true,
+                opacity: 0.85,
+            })
+        );
+        tube.castShadow = true;
+        scene.add(tube);
+        pipeMeshes.push({ curve, color: p.color, key: `${p.from}-${p.to}` });
+    });
+
+    // —— Ambient dust / ash (2049) ——
+    function buildDust(count) {
+        const geo = new THREE.BufferGeometry();
+        const pos = new Float32Array(count * 3);
+        for (let i = 0; i < count; i++) {
+            pos[i * 3] = (Math.random() - 0.5) * 18;
+            pos[i * 3 + 1] = Math.random() * 10;
+            pos[i * 3 + 2] = (Math.random() - 0.5) * 18;
+        }
+        geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        dustParticles = new THREE.Points(
+            geo,
+            new THREE.PointsMaterial({
+                color: 0xff9a3c,
+                size: 0.04,
+                transparent: true,
+                opacity: 0.35,
+                depthWrite: false,
+            })
+        );
+        scene.add(dustParticles);
+    }
+
+    buildDust(reducedMotion ? 80 : 220);
+
+    // Distant hologram pillars (Las Vegas ruins)
+    [-8, 8].forEach((x) => {
+        const holo = new THREE.Mesh(
+            new THREE.BoxGeometry(0.15, 6 + Math.random() * 4, 0.15),
+            new THREE.MeshStandardMaterial({
+                color: 0xff9a3c,
+                emissive: 0xff5c00,
+                emissiveIntensity: 0.9,
+                transparent: true,
+                opacity: 0.35,
+            })
+        );
+        holo.position.set(x, 2, -7 - Math.random() * 3);
+        scene.add(holo);
+    });
+
+    // —— Physics (unchanged model) ——
     function readControls() {
         return {
             gov: Number(controls.gov.value) / 100,
@@ -62,38 +401,6 @@
         labels.mpc.textContent = Math.round(c.mpc * 100) + '%';
     }
 
-    function stepPhysics(c, dt) {
-        const investBase = 0.28 * (1 - c.rate * 1.35);
-        const inject = c.gov * 0.55 + Math.max(0.05, investBase);
-        const leak = Math.max(0.12, c.tax * 0.55 + (1 - c.mpc) * 0.35);
-        const targetY = Math.min(0.98, inject / leak);
-
-        const k = 1 - Math.pow(0.001, dt);
-        state.Y += (targetY - state.Y) * k;
-        state.G += (c.gov * 0.85 - state.G) * k * 0.8;
-        state.I += (Math.max(0.08, investBase) - state.I) * k * 0.8;
-        state.T += (state.Y * c.tax * 0.9 - state.T) * k;
-        state.S += (state.Y * (1 - c.mpc) * 0.75 - state.S) * k;
-        state.C += (state.Y * c.mpc * 0.82 - state.C) * k;
-
-        const bnpIdx = Math.round(state.Y * 100);
-        const unemp = (1 - state.Y) * 11.5 + 2.2;
-        const infl = Math.max(0, (state.Y - 0.62) * 52 + (c.gov - 0.35) * 12);
-
-        if (hud.bnp) hud.bnp.textContent = String(bnpIdx).padStart(3, '0');
-        if (hud.ledighet) hud.ledighet.textContent = unemp.toFixed(1) + '%';
-        if (hud.inflasjon) hud.inflasjon.textContent = infl.toFixed(1) + '%';
-
-        if (hud.status) {
-            if (state.Y > 0.88) hud.status.textContent = 'OVEROPPHETET — VENTILER ÅPNER';
-            else if (state.Y < 0.28) hud.status.textContent = 'DEFLATORISK SJOK — PUMPE TOM';
-            else if (c.rate > 0.055 && state.I < 0.15) hud.status.textContent = 'PENGEPOLITISK BREMS';
-            else hud.status.textContent = 'NOMINAL SIRKULASJON STABIL';
-        }
-
-        return { flows: computeFlows(c), targetY };
-    }
-
     function computeFlows(c) {
         const investFlow = Math.max(0.04, 0.28 * (1 - c.rate * 1.3));
         return {
@@ -106,350 +413,172 @@
         };
     }
 
-    function buildLayout(width, height) {
-        const cx = width * 0.5;
-        const tw = Math.min(118, width * 0.14);
-        const th = Math.min(150, height * 0.28);
-        const tank = (id, x, y, label, sub, colorKey) => ({
-            id, x, y, w: tw, h: th, label, sub, color: COLORS[colorKey],
-        });
+    function stepPhysics(c, dt) {
+        const investBase = 0.28 * (1 - c.rate * 1.35);
+        const inject = c.gov * 0.55 + Math.max(0.05, investBase);
+        const leak = Math.max(0.12, c.tax * 0.55 + (1 - c.mpc) * 0.35);
+        const targetY = Math.min(0.98, inject / leak);
+        const k = 1 - Math.pow(0.001, dt);
 
-        return {
-            tanks: {
-                Y: tank('Y', cx - tw / 2, height * 0.36, 'Y', 'NASJONALINNTEKT', 'income'),
-                C: tank('C', cx - tw * 2.1, height * 0.68, 'C', 'FORBRUK', 'consume'),
-                T: tank('T', cx + tw * 1.1, height * 0.12, 'T', 'SKATT', 'tax'),
-                S: tank('S', cx + tw * 1.1, height * 0.68, 'S', 'SPARING', 'save'),
-                G: tank('G', cx - tw * 2.1, height * 0.12, 'G', 'OFFENTLIG', 'gov'),
-                I: tank('I', cx + tw * 1.1, height * 0.36, 'I', 'INVESTERING', 'invest'),
-            },
-            pipes: [
-                { from: 'G', to: 'Y', color: COLORS.gov },
-                { from: 'I', to: 'Y', color: COLORS.invest },
-                { from: 'Y', to: 'C', color: COLORS.consume },
-                { from: 'Y', to: 'T', color: COLORS.tax },
-                { from: 'Y', to: 'S', color: COLORS.save },
-                { from: 'C', to: 'Y', color: COLORS.consume, curved: true },
-            ],
-        };
+        state.Y += (targetY - state.Y) * k;
+        state.G += (c.gov * 0.85 - state.G) * k * 0.8;
+        state.I += (Math.max(0.08, investBase) - state.I) * k * 0.8;
+        state.T += (state.Y * c.tax * 0.9 - state.T) * k;
+        state.S += (state.Y * (1 - c.mpc) * 0.75 - state.S) * k;
+        state.C += (state.Y * c.mpc * 0.82 - state.C) * k;
+
+        if (hud.bnp) hud.bnp.textContent = String(Math.round(state.Y * 100)).padStart(3, '0');
+        if (hud.ledighet) hud.ledighet.textContent = ((1 - state.Y) * 11.5 + 2.2).toFixed(1) + '%';
+        if (hud.inflasjon) hud.inflasjon.textContent = Math.max(0, (state.Y - 0.62) * 52 + (c.gov - 0.35) * 12).toFixed(1) + '%';
+
+        if (hud.status) {
+            if (state.Y > 0.88) hud.status.textContent = 'OVEROPPHETET — VENTILER ÅPNER';
+            else if (state.Y < 0.28) hud.status.textContent = 'DEFLATORISK SJOK — PUMPE TOM';
+            else if (c.rate > 0.055 && state.I < 0.15) hud.status.textContent = 'PENGEPOLITISK BREMS';
+            else hud.status.textContent = 'NOMINAL SIRKULASJON STABIL';
+        }
+
+        setTankLevel(tanks.Y, state.Y);
+        setTankLevel(tanks.C, state.C);
+        setTankLevel(tanks.T, state.T);
+        setTankLevel(tanks.S, state.S);
+        setTankLevel(tanks.G, state.G);
+        setTankLevel(tanks.I, state.I);
+
+        hubGlow.intensity = 0.8 + state.Y * 1.2;
+        rimPink.intensity = 1.2 + state.C * 2;
+        scene.fog.density = 0.038 + state.Y * 0.018;
+
+        return computeFlows(c);
     }
 
-    function tankPort(tank, side) {
-        const midX = tank.x + tank.w / 2;
-        const midY = tank.y + tank.h / 2;
-        switch (side) {
-            case 'top': return { x: midX, y: tank.y };
-            case 'bottom': return { x: midX, y: tank.y + tank.h };
-            case 'left': return { x: tank.x, y: midY };
-            case 'right': return { x: tank.x + tank.w, y: midY };
-            default: return { x: midX, y: midY };
+    const flowSphereGeo = new THREE.SphereGeometry(0.055, 6, 6);
+    const flowMats = new Map();
+
+    function flowMaterial(color) {
+        if (!flowMats.has(color)) {
+            flowMats.set(
+                color,
+                new THREE.MeshStandardMaterial({
+                    color,
+                    emissive: color,
+                    emissiveIntensity: 1.6,
+                    metalness: 0.2,
+                    roughness: 0.3,
+                    transparent: true,
+                    opacity: 0.92,
+                })
+            );
         }
+        return flowMats.get(color);
     }
 
-    function pipeEndpoints(pipe) {
-        const tanks = layout.tanks;
-        const a = tanks[pipe.from];
-        const b = tanks[pipe.to];
-        if (!a || !b) return null;
-
-        let start = tankPort(a, 'bottom');
-        let end = tankPort(b, 'top');
-
-        if (pipe.from === 'G') start = tankPort(a, 'right');
-        if (pipe.from === 'I') start = tankPort(a, 'left');
-        if (pipe.to === 'Y' && pipe.from === 'G') end = tankPort(b, 'left');
-        if (pipe.to === 'Y' && pipe.from === 'I') end = tankPort(b, 'right');
-        if (pipe.from === 'Y' && pipe.to === 'C') {
-            start = tankPort(a, 'left');
-            end = tankPort(b, 'top');
-        }
-        if (pipe.from === 'Y' && pipe.to === 'T') {
-            start = tankPort(a, 'top');
-            end = tankPort(b, 'bottom');
-        }
-        if (pipe.from === 'Y' && pipe.to === 'S') {
-            start = tankPort(a, 'right');
-            end = tankPort(b, 'top');
-        }
-        if (pipe.from === 'C' && pipe.to === 'Y') {
-            start = tankPort(a, 'right');
-            end = tankPort(b, 'bottom');
-        }
-
-        return { start, end, curved: pipe.curved };
-    }
+    const flowKeyMap = {
+        'G-Y': 'gToY',
+        'I-Y': 'iToY',
+        'Y-C': 'yToC',
+        'Y-T': 'yToT',
+        'Y-S': 'yToS',
+        'C-Y': 'cToY',
+    };
 
     function spawnParticles(flows) {
-        const cap = window.innerWidth < 768 ? 90 : 160;
-        const flowMap = {
-            'G-Y': flows.gToY,
-            'I-Y': flows.iToY,
-            'Y-C': flows.yToC,
-            'Y-T': flows.yToT,
-            'Y-S': flows.yToS,
-            'C-Y': flows.cToY,
-        };
-
-        layout.pipes.forEach((pipe) => {
-            const key = pipe.from + '-' + pipe.to;
-            const rate = flowMap[key] || 0.05;
-            if (Math.random() < rate * 2.8 && particles.length < cap) {
-                const ep = pipeEndpoints(pipe);
-                if (!ep) return;
-                particles.push({
-                    pipeKey: key,
-                    t: 0,
-                    speed: 0.35 + rate * 0.9 + Math.random() * 0.25,
-                    color: pipe.color.pipe,
-                    curved: ep.curved,
-                });
+        const cap = window.innerWidth < 768 ? 70 : 140;
+        pipeMeshes.forEach(({ curve, color, key }) => {
+            const rate = flows[flowKeyMap[key]] || 0.05;
+            if (Math.random() < rate * 2.5 && flowParticles.length < cap) {
+                const mesh = new THREE.Mesh(flowSphereGeo, flowMaterial(color));
+                scene.add(mesh);
+                flowParticles.push({ mesh, curve, t: 0, speed: 0.25 + rate * 0.8 + Math.random() * 0.2 });
             }
         });
     }
 
-    function drawTank(tank, level) {
-        const { x, y, w, h, label, sub, color } = tank;
-        const pad = 5;
-        const innerX = x + pad;
-        const innerY = y + pad;
-        const innerW = w - pad * 2;
-        const innerH = h - pad * 2;
-        const lvl = Math.max(0.06, Math.min(0.96, level));
-
-        ctx.save();
-
-        // Glass frame
-        ctx.strokeStyle = 'rgba(255, 154, 60, 0.35)';
-        ctx.lineWidth = 1.5;
-        ctx.shadowColor = color.glow;
-        ctx.shadowBlur = 14;
-        ctx.strokeRect(x, y, w, h);
-
-        // Inner glass
-        const glass = ctx.createLinearGradient(x, y, x + w, y + h);
-        glass.addColorStop(0, 'rgba(36, 18, 12, 0.75)');
-        glass.addColorStop(1, 'rgba(20, 10, 8, 0.9)');
-        ctx.fillStyle = glass;
-        ctx.fillRect(innerX, innerY, innerW, innerH);
-
-        // Liquid
-        const liquidH = innerH * lvl;
-        const ly = innerY + innerH - liquidH;
-        const lg = ctx.createLinearGradient(0, ly, 0, ly + liquidH);
-        lg.addColorStop(0, color.fill);
-        lg.addColorStop(1, 'rgba(10, 6, 4, 0.85)');
-        ctx.fillStyle = lg;
-        ctx.globalAlpha = 0.88;
-        ctx.fillRect(innerX + 1, ly, innerW - 2, liquidH);
-        ctx.globalAlpha = 1;
-
-        // Surface shimmer
-        ctx.strokeStyle = color.fill;
-        ctx.lineWidth = 1;
-        ctx.shadowColor = color.glow;
-        ctx.shadowBlur = 20;
-        ctx.beginPath();
-        ctx.moveTo(innerX + 4, ly + 2);
-        ctx.lineTo(innerX + innerW - 4, ly + 2);
-        ctx.stroke();
-
-        // Scale ticks
-        ctx.shadowBlur = 0;
-        ctx.strokeStyle = 'rgba(255, 154, 60, 0.15)';
-        ctx.lineWidth = 1;
-        for (let i = 1; i < 5; i++) {
-            const ty = innerY + (innerH / 5) * i;
-            ctx.beginPath();
-            ctx.moveTo(x + w - 12, ty);
-            ctx.lineTo(x + w - 5, ty);
-            ctx.stroke();
-        }
-
-        // Labels
-        ctx.font = "600 13px 'Orbitron', sans-serif";
-        ctx.fillStyle = '#fbe4cf';
-        ctx.textAlign = 'center';
-        ctx.shadowBlur = 8;
-        ctx.shadowColor = color.glow;
-        ctx.fillText(label, x + w / 2, y - 10);
-
-        ctx.font = "10px 'Share Tech Mono', monospace";
-        ctx.fillStyle = '#8a6e58';
-        ctx.shadowBlur = 0;
-        ctx.fillText(sub, x + w / 2, y - 24);
-
-        ctx.restore();
-    }
-
-    function drawPipe(pipe) {
-        const ep = pipeEndpoints(pipe);
-        if (!ep) return;
-        const { start, end, curved } = ep;
-
-        ctx.save();
-        ctx.strokeStyle = 'rgba(255, 154, 60, 0.12)';
-        ctx.lineWidth = 10;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(start.x, start.y);
-        if (curved) {
-            const cpx = (start.x + end.x) / 2 + 40;
-            const cpy = (start.y + end.y) / 2;
-            ctx.quadraticCurveTo(cpx, cpy, end.x, end.y);
-        } else {
-            const midX = (start.x + end.x) / 2;
-            const midY = (start.y + end.y) / 2;
-            ctx.lineTo(midX, start.y);
-            ctx.lineTo(midX, end.y);
-            ctx.lineTo(end.x, end.y);
-        }
-        ctx.stroke();
-
-        ctx.strokeStyle = pipe.color.pipe;
-        ctx.globalAlpha = 0.35;
-        ctx.lineWidth = 2;
-        ctx.shadowColor = pipe.color.glow;
-        ctx.shadowBlur = 6;
-        ctx.beginPath();
-        ctx.moveTo(start.x, start.y);
-        if (curved) {
-            const cpx = (start.x + end.x) / 2 + 40;
-            const cpy = (start.y + end.y) / 2;
-            ctx.quadraticCurveTo(cpx, cpy, end.x, end.y);
-        } else {
-            const midX = (start.x + end.x) / 2;
-            const midY = (start.y + end.y) / 2;
-            ctx.lineTo(midX, start.y);
-            ctx.lineTo(midX, end.y);
-            ctx.lineTo(end.x, end.y);
-        }
-        ctx.stroke();
-        ctx.restore();
-    }
-
-    function particlePos(pipeKey, t, curved) {
-        const pipe = layout.pipes.find((p) => p.from + '-' + p.to === pipeKey);
-        if (!pipe) return null;
-        const ep = pipeEndpoints(pipe);
-        if (!ep) return null;
-        const { start, end } = ep;
-
-        if (curved) {
-            const cpx = (start.x + end.x) / 2 + 40;
-            const cpy = (start.y + end.y) / 2;
-            const u = 1 - t;
-            return {
-                x: u * u * start.x + 2 * u * t * cpx + t * t * end.x,
-                y: u * u * start.y + 2 * u * t * cpy + t * t * end.y,
-            };
-        }
-
-        const midX = (start.x + end.x) / 2;
-        if (t < 0.5) {
-            const local = t * 2;
-            return { x: start.x + (midX - start.x) * local, y: start.y };
-        }
-        const local = (t - 0.5) * 2;
-        return { x: midX + (end.x - midX) * local, y: start.y + (end.y - start.y) * local };
-    }
-
-    function drawParticles(dt) {
-        particles = particles.filter((p) => {
+    function updateFlowParticles(dt) {
+        flowParticles = flowParticles.filter((p) => {
             p.t += p.speed * dt;
-            if (p.t >= 1) return false;
-            const pos = particlePos(p.pipeKey, p.t, p.curved);
-            if (!pos) return false;
-
-            ctx.save();
-            ctx.fillStyle = p.color;
-            ctx.shadowColor = p.color;
-            ctx.shadowBlur = 10;
-            ctx.globalAlpha = 0.55 + Math.sin(p.t * Math.PI) * 0.35;
-            ctx.beginPath();
-            ctx.arc(pos.x, pos.y, 2.2, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.restore();
+            if (p.t >= 1) {
+                scene.remove(p.mesh);
+                return false;
+            }
+            const pt = p.curve.getPointAt(Math.min(1, Math.max(0, p.t)));
+            if (!Number.isFinite(pt.x)) return false;
+            p.mesh.position.copy(pt);
+            const s = 0.7 + Math.sin(p.t * Math.PI) * 0.5;
+            p.mesh.scale.setScalar(s);
             return true;
         });
     }
 
-    function drawFrame() {
-        ctx.clearRect(0, 0, w, h);
-
-        // Panel grid
-        ctx.strokeStyle = 'rgba(255, 154, 60, 0.06)';
-        ctx.lineWidth = 1;
-        const gs = 32;
-        for (let x = 0; x < w; x += gs) {
-            ctx.beginPath();
-            ctx.moveTo(x, 0);
-            ctx.lineTo(x, h);
-            ctx.stroke();
+    function updateDust(dt) {
+        if (!dustParticles || reducedMotion) return;
+        const arr = dustParticles.geometry.attributes.position.array;
+        for (let i = 0; i < arr.length; i += 3) {
+            arr[i + 1] -= dt * (0.15 + (i % 5) * 0.02);
+            if (arr[i + 1] < 0) arr[i + 1] = 10;
         }
-        for (let y = 0; y < h; y += gs) {
-            ctx.beginPath();
-            ctx.moveTo(0, y);
-            ctx.lineTo(w, y);
-            ctx.stroke();
-        }
-
-        // Title watermark
-        ctx.font = "11px 'Share Tech Mono', monospace";
-        ctx.fillStyle = 'rgba(255, 154, 60, 0.25)';
-        ctx.textAlign = 'left';
-        ctx.fillText('MONIAC MK.II — HYDRAULISK SIRKULASJON', 16, 22);
-
-        layout.pipes.forEach(drawPipe);
-
-        const levels = { Y: state.Y, C: state.C, T: state.T, S: state.S, G: state.G, I: state.I };
-        Object.values(layout.tanks).forEach((t) => drawTank(t, levels[t.id] || 0.2));
-
-        // Central hub ring
-        const hub = layout.tanks.Y;
-        ctx.strokeStyle = 'rgba(255, 154, 60, 0.4)';
-        ctx.lineWidth = 1;
-        ctx.shadowColor = 'rgba(255, 154, 60, 0.5)';
-        ctx.shadowBlur = 16;
-        ctx.beginPath();
-        ctx.arc(hub.x + hub.w / 2, hub.y + hub.h / 2, hub.w * 0.72, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.shadowBlur = 0;
+        dustParticles.geometry.attributes.position.needsUpdate = true;
     }
 
     let last = performance.now();
+    let animId = 0;
 
-    function loop(now) {
+    function renderFrame() {
+        if (composer) {
+            composer.render();
+        } else {
+            renderer.render(scene, camera);
+        }
+        labelRenderer.render(scene, camera);
+    }
+
+    function renderStill() {
+        const c = readControls();
+        updateLabels(c);
+        stepPhysics(c, 0.016);
+        renderFrame();
+    }
+
+    function animate(now) {
         if (!running) return;
+        animId = requestAnimationFrame(animate);
         const dt = Math.min(0.05, (now - last) / 1000);
         last = now;
 
         const c = readControls();
         updateLabels(c);
-        const { flows } = stepPhysics(c, dt);
-        spawnParticles(flows);
-        drawFrame();
-        drawParticles(dt);
+        const flows = stepPhysics(c, dt);
 
-        requestAnimationFrame(loop);
+        if (!reducedMotion) {
+            spawnParticles(flows);
+            updateFlowParticles(dt);
+            updateDust(dt);
+            orbit.update();
+        }
+
+        renderFrame();
     }
 
     function resize() {
-        const rect = canvas.parentElement.getBoundingClientRect();
-        dpr = Math.min(window.devicePixelRatio || 1, 2);
-        w = Math.max(320, rect.width);
-        h = Math.max(380, Math.min(560, w * 0.62));
-        canvas.width = w * dpr;
-        canvas.height = h * dpr;
-        canvas.style.width = w + 'px';
-        canvas.style.height = h + 'px';
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        layout = buildLayout(w, h);
+        const parent = canvas.parentElement;
+        const width = Math.max(280, parent.clientWidth);
+        const height = Math.max(380, Math.min(520, width * 0.62));
+        if (!width || !height) return;
+        canvas.style.height = height + 'px';
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+        renderer.setSize(width, height, false);
+        labelRenderer.setSize(width, height);
+        if (composer) {
+            composer.setSize(width, height);
+            bloomPass?.resolution.set(width, height);
+        }
     }
 
     Object.values(controls).forEach((el) => {
-        el.addEventListener('input', () => {
-            const c = readControls();
-            updateLabels(c);
+        el?.addEventListener('input', () => {
+            updateLabels(readControls());
+            if (reducedMotion) renderStill();
         });
     });
 
@@ -458,49 +587,52 @@
         controls.rate.value = 4.5;
         controls.tax.value = 28;
         controls.mpc.value = 72;
-        state.Y = 0.42;
-        state.C = 0.3;
-        state.T = 0.18;
-        state.S = 0.15;
-        state.G = 0.2;
-        state.I = 0.22;
-        particles = [];
+        Object.assign(state, { Y: 0.42, C: 0.3, T: 0.18, S: 0.15, G: 0.2, I: 0.22 });
+        flowParticles.forEach((p) => scene.remove(p.mesh));
+        flowParticles = [];
         updateLabels(readControls());
     });
 
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-    if (reducedMotion.matches) running = false;
-
-    reducedMotion.addEventListener?.('change', (e) => {
-        running = !e.matches;
-        if (running) {
-            last = performance.now();
-            requestAnimationFrame(loop);
-        }
+    window.matchMedia('(prefers-reduced-motion: reduce)').addEventListener?.('change', (e) => {
+        reducedMotion = e.matches;
+        orbit.autoRotate = !reducedMotion;
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, reducedMotion ? 1 : 2));
     });
 
     const observer = new IntersectionObserver(
         (entries) => {
             const visible = entries[0]?.isIntersecting;
-            if (visible && !running && !reducedMotion.matches) {
+            if (visible && !running) {
                 running = true;
-                last = performance.now();
-                requestAnimationFrame(loop);
+                if (reducedMotion) {
+                    renderStill();
+                } else {
+                    last = performance.now();
+                    animate(last);
+                }
             } else if (!visible) {
                 running = false;
+                cancelAnimationFrame(animId);
             }
         },
-        { threshold: 0.12 }
+        { threshold: 0.1 }
     );
     observer.observe(panel);
 
     resize();
     updateLabels(readControls());
-    requestAnimationFrame(loop);
+    if (reducedMotion) {
+        renderStill();
+    } else {
+        running = true;
+        animate(performance.now());
+    }
 
     let resizeTO;
     window.addEventListener('resize', () => {
         clearTimeout(resizeTO);
         resizeTO = setTimeout(resize, 120);
     });
-})();
+}
+
+initMoniac();
