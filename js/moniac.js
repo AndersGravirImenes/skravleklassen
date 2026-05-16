@@ -7,6 +7,7 @@ import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { attachLivingWorld } from './arrakis-life.js';
 
 const SPICE = 0xe8923a;
 const SPICE_BRIGHT = 0xffc04d;
@@ -167,7 +168,7 @@ function initMoniac() {
     let flowParticles = [];
     let dustParticles;
     let pumpGroup;
-    let wormSegments = [];
+    let livingWorld = null;
     let running = true;
     let reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -392,16 +393,6 @@ function initMoniac() {
                 pipe.rotation.z = Math.PI / 2;
                 pipe.position.set(0.6, 0.55, 0);
                 group.add(pipe);
-                for (let i = 0; i < 6; i++) {
-                    const seg = new THREE.Mesh(
-                        new THREE.SphereGeometry(0.22 + i * 0.04, 8, 8),
-                        new THREE.MeshStandardMaterial({ color: 0x3d2818, roughness: 0.9 })
-                    );
-                    seg.position.set(1.2 + i * 0.35, -0.3 + i * 0.08, 0);
-                    seg.userData.phase = i * 0.5;
-                    wormSegments.push(seg);
-                    group.add(seg);
-                }
                 fill = createFill(SPICE_BRIGHT, 0.35, 0.4);
                 fill.position.set(0.3, 0.5, 0);
                 portY = 0.5;
@@ -419,6 +410,8 @@ function initMoniac() {
     NODE_DEFS.forEach((d) => {
         nodes[d.id] = createNode(d);
     });
+
+    livingWorld = attachLivingWorld({ scene, nodes, reducedMotion });
 
     function setNodeLevel(node, level) {
         if (!node?.fill) return;
@@ -570,12 +563,10 @@ function initMoniac() {
         scene.fog.density = 0.024 + Math.max(0, (state.Y - MACRO.Y_POT) * 0.025);
 
         if (!reducedMotion && pumpGroup) {
-            const t = performance.now() * 0.001;
-            wormSegments.forEach((seg, i) => {
-                seg.position.y = -0.35 + i * 0.08 + Math.sin(t * 2 + seg.userData.phase) * 0.06;
-            });
-            pumpGroup.rotation.y = Math.sin(t * 0.4) * 0.05;
+            pumpGroup.rotation.y = Math.sin(performance.now() * 0.0004) * 0.06;
         }
+
+        livingWorld?.update(dt, { pump: state.P, invest: state.I, spice: state.Y });
 
         return computeFlows(c);
     }
@@ -641,6 +632,7 @@ function initMoniac() {
         const c = readControls();
         updateLabels(c);
         stepPhysics(c, 0.016);
+        livingWorld?.faceCamera(camera);
         renderFrame();
     }
 
@@ -658,6 +650,7 @@ function initMoniac() {
             updateDust(dt);
             orbit.update();
         }
+        livingWorld?.faceCamera(camera);
         renderFrame();
     }
 
