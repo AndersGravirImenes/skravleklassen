@@ -1,48 +1,17 @@
 /**
- * Levende Arrakis-enheter — inspirert av EntityManager-mønsteret i
- * https://github.com/Robbington/dune-js (sprite/entitets-loop, egen 3D-implementasjon)
+ * Levende Arrakis-enheter — harvester-sprites fra Dune II / Dune Dynasty-spes.
  */
 import * as THREE from 'three';
+import {
+    createHarvesterSprite,
+    headingToDir8,
+    loadHarvesterAtlas,
+    setHarvesterFrame,
+    speedFromPump,
+} from './dune-harvester.js';
 
 const SPICE = 0xe8923a;
 const SPICE_GLOW = 0xffc04d;
-
-function makeHarvesterTexture() {
-    const size = 128;
-    const canvas = document.createElement('canvas');
-    canvas.width = size;
-    canvas.height = size;
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#3d2810';
-    ctx.fillRect(0, 0, size, size);
-
-    ctx.fillStyle = '#5a4a38';
-    ctx.beginPath();
-    ctx.ellipse(64, 68, 44, 28, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = '#8a7358';
-    ctx.fillRect(28, 52, 72, 22);
-
-    ctx.fillStyle = '#2a2018';
-    ctx.fillRect(18, 78, 22, 14);
-    ctx.fillRect(88, 78, 22, 14);
-
-    ctx.fillStyle = SPICE_GLOW;
-    ctx.globalAlpha = 0.85;
-    ctx.beginPath();
-    ctx.ellipse(64, 58, 18, 10, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalAlpha = 1;
-
-    ctx.strokeStyle = '#c9a86c';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(48, 38, 32, 12);
-
-    const tex = new THREE.CanvasTexture(canvas);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    return tex;
-}
 
 function makeOrniTexture() {
     const canvas = document.createElement('canvas');
@@ -112,29 +81,6 @@ function createBillboard(texture, scale = 1.4) {
     return mesh;
 }
 
-function createHarvesterMesh() {
-    const group = new THREE.Group();
-    const body = new THREE.Mesh(
-        new THREE.BoxGeometry(1.1, 0.35, 0.75),
-        new THREE.MeshStandardMaterial({ color: 0x5a4a38, metalness: 0.5, roughness: 0.55 })
-    );
-    body.position.y = 0.2;
-    group.add(body);
-    const cabin = new THREE.Mesh(
-        new THREE.BoxGeometry(0.45, 0.25, 0.4),
-        new THREE.MeshStandardMaterial({ color: 0x8a7358, metalness: 0.4 })
-    );
-    cabin.position.set(0, 0.42, -0.15);
-    group.add(cabin);
-    const glow = new THREE.Mesh(
-        new THREE.SphereGeometry(0.12, 8, 8),
-        new THREE.MeshStandardMaterial({ color: SPICE, emissive: SPICE_GLOW, emissiveIntensity: 1.2 })
-    );
-    glow.position.set(0, 0.35, 0.2);
-    group.add(glow);
-    return group;
-}
-
 /**
  * @param {object} opts
  * @param {THREE.Scene} opts.scene
@@ -142,44 +88,63 @@ function createHarvesterMesh() {
  * @param {boolean} opts.reducedMotion
  */
 export function attachLivingWorld({ scene, nodes, reducedMotion }) {
-    const harvesterTex = makeHarvesterTexture();
     const orniTex = makeOrniTexture();
     const entities = [];
     const trails = [];
     const worm = { segments: [], phase: 0 };
+    let harvesterAtlas = null;
+    let cameraYaw = 0;
 
     const yPos = nodes.Y?.group?.position;
     const pPos = nodes.P?.group?.position;
     const cx = yPos?.x ?? 0;
     const cz = yPos?.z ?? 0;
 
-    function addHarvester(path, speed, useBillboard = false) {
+    function addHarvester(path, baseSpeed) {
         const root = new THREE.Group();
-        if (useBillboard) {
-            root.add(createBillboard(harvesterTex, 1.8));
-        } else {
-            root.add(createHarvesterMesh());
-        }
+        const placeholder = new THREE.Mesh(
+            new THREE.BoxGeometry(0.01, 0.01, 0.01),
+            new THREE.MeshBasicMaterial({ visible: false })
+        );
+        root.add(placeholder);
         scene.add(root);
-        entities.push({
+        const entity = {
             kind: 'harvester',
             root,
+            mesh: null,
             path,
             phase: Math.random(),
-            speed,
-            billboard: useBillboard,
-        });
+            baseSpeed,
+            anim: 0,
+            dir8: 0,
+        };
+        entities.push(entity);
+        return entity;
     }
 
-    addHarvester(ellipsePath(cx, cz, 5.2, 3.8), 0.045, true);
-    addHarvester(ellipsePath(cx, cz, 6.8, 5.2), 0.032, false);
-    addHarvester(ellipsePath(cx, cz, 4.2, 6.5), 0.038, true);
+    addHarvester(ellipsePath(cx, cz, 5.2, 3.8), 0.045);
+    addHarvester(ellipsePath(cx, cz, 6.8, 5.2), 0.032);
+    addHarvester(ellipsePath(cx, cz, 4.2, 6.5), 0.038);
 
     if (pPos && yPos) {
         const depot = new THREE.Vector3(pPos.x + 1.2, -0.85, pPos.z);
         const siloIn = new THREE.Vector3(cx - 1.1, -0.85, cz);
-        addHarvester(linePath(depot, siloIn), 0.12, false);
+        addHarvester(linePath(depot, siloIn), 0.12);
     }
+
+    loadHarvesterAtlas().then((atlas) => {
+        harvesterAtlas = atlas;
+        entities.forEach((e) => {
+            if (e.kind !== 'harvester' || e.mesh) return;
+            e.root.clear();
+            const { mesh } = createHarvesterSprite(atlas);
+            e.mesh = mesh;
+            e.root.add(mesh);
+            setHarvesterFrame(mesh, e.dir8, 0);
+        });
+    }).catch(() => {
+        /* stille fallback — usynlige harvestere til sprite lastes */
+    });
 
     const orni = new THREE.Group();
     orni.add(createBillboard(orniTex, 1.2));
@@ -222,14 +187,29 @@ export function attachLivingWorld({ scene, nodes, reducedMotion }) {
         const pump = intensities.pump ?? 0.5;
         const invest = intensities.invest ?? 0.5;
         const spice = intensities.spice ?? 0.5;
-        const speedMul = 0.35 + pump * 1.4;
+        const camera = intensities.camera;
+
+        if (camera) {
+            cameraYaw = Math.atan2(
+                camera.position.x - cx,
+                camera.position.z - cz
+            );
+        }
 
         entities.forEach((e) => {
             if (e.kind === 'harvester') {
-                e.phase = (e.phase + dt * e.speed * speedMul) % 1;
+                const moveSpeed = speedFromPump(pump, e.baseSpeed);
+                e.phase = (e.phase + dt * moveSpeed) % 1;
                 const pos = e.path.getPoint(e.phase);
+                const heading = e.path.getHeading(e.phase);
                 e.root.position.copy(pos);
-                e.root.rotation.y = e.path.getHeading(e.phase);
+                e.dir8 = headingToDir8(heading, cameraYaw);
+                e.anim += dt * moveSpeed * 42;
+                const animRow = Math.floor(e.anim) % 2;
+                if (e.mesh) {
+                    setHarvesterFrame(e.mesh, e.dir8, animRow);
+                    e.mesh.visible = true;
+                }
                 if (!reducedMotion && Math.random() < 0.08 * pump) spawnTrail(pos);
             }
             if (e.kind === 'ornithopter' && invest > 0.25) {
@@ -275,7 +255,7 @@ export function attachLivingWorld({ scene, nodes, reducedMotion }) {
 
     function faceCamera(camera) {
         entities.forEach((e) => {
-            if (!e.billboard || !e.root?.children[0]) return;
+            if (e.kind !== 'ornithopter' || !e.root?.children[0]) return;
             const mesh = e.root.children[0];
             mesh.lookAt(camera.position.x, mesh.getWorldPosition(new THREE.Vector3()).y, camera.position.z);
         });

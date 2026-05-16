@@ -566,7 +566,12 @@ function initMoniac() {
             pumpGroup.rotation.y = Math.sin(performance.now() * 0.0004) * 0.06;
         }
 
-        livingWorld?.update(dt, { pump: state.P, invest: state.I, spice: state.Y });
+        livingWorld?.update(dt, {
+            pump: state.P,
+            invest: state.I,
+            spice: state.Y,
+            camera,
+        });
 
         return computeFlows(c);
     }
