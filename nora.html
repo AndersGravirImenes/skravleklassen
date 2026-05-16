@@ -129,13 +129,19 @@
                     <input type="range" id="nora-rate" min="0" max="90" step="5" value="45">
                     <p class="nora-control-hint">Nominell styringsrente som sentralbanken sikter mot. Taylor-regelen justerer den videre når inflasjon eller output gap avviker.</p>
                 </div>
-                <div class="nora-control">
-                    <header>
-                        <label for="nora-pi-target">π* — Inflasjonsmål</label>
-                        <span class="value" id="nora-pi-target-val">2.0%</span>
-                    </header>
-                    <input type="range" id="nora-pi-target" min="0" max="50" step="5" value="20">
-                    <p class="nora-control-hint">Målinflasjon for KPI. Rente strammes når π ligger over målet, og løsnes når den er for lav.</p>
+                <div class="nora-control nora-control--pi-band">
+                    <label class="nora-toggle nora-toggle--compact">
+                        <input type="checkbox" id="nora-pi-band">
+                        <span>Inflasjonsmål som intervall 1–3 % (ikke punktmål)</span>
+                    </label>
+                    <div id="nora-pi-target-control">
+                        <header>
+                            <label for="nora-pi-target">π* — Inflasjonsmål (punkt)</label>
+                            <span class="value" id="nora-pi-target-val">2.0%</span>
+                        </header>
+                        <input type="range" id="nora-pi-target" min="0" max="50" step="5" value="20">
+                    </div>
+                    <p class="nora-control-hint">Punktmål: Taylor-regelen reagerer når π avviker fra glidebryteren. Intervall 1–3 %: banken strammer bare over 3 % og løsner under 1 %; innenfor båndet ingen π-respons i renten.</p>
                 </div>
                 <div class="nora-control">
                     <header>

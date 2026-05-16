@@ -31,6 +31,25 @@ const NORA_PARAMS = {
     yPot: 1,
 };
 
+/** Inflasjonsmål som intervall (Norges Bank / KPI-bånd, forenklet) */
+const PI_BAND = { lo: 0.01, hi: 0.03, mid: 0.02 };
+
+/** π-avvik i Taylor-regelen: punktmål eller kun utenfor 1–3 %. */
+function taylorInflationGap(pi, ctrl) {
+    if (ctrl.piBand) {
+        if (pi > PI_BAND.hi) return pi - PI_BAND.hi;
+        if (pi < PI_BAND.lo) return pi - PI_BAND.lo;
+        return 0;
+    }
+    return pi - Math.max(0.005, ctrl.piTarget / 100);
+}
+
+/** π-avvik i Phillips (senter 2 % ved bånd, ellers punktmål). */
+function phillipsInflationGap(pi, ctrl) {
+    const piStar = ctrl.piBand ? PI_BAND.mid : Math.max(0.005, ctrl.piTarget / 100);
+    return pi - piStar;
+}
+
 /** Arbeidsmarked — forenklet kap. 2.3–2.4 (lønnskurve + frontfag) */
 const LABOR = {
     Lf_ss: 0.71,
@@ -121,7 +140,6 @@ function stepNora(state, ctrl, dt) {
     const ricardian = 1 - omega;
 
     const rTarget = ctrl.policyRate / 100;
-    const piStar = ctrl.piTarget / 100;
     const gShare = ctrl.govG / 100;
     const giShare = ctrl.govI / 100;
     const oilInv = ctrl.oilShock / 100;
@@ -131,11 +149,11 @@ function stepNora(state, ctrl, dt) {
 
     const { y, pi, L, D, F, Gb, Rprev, W, E, Lf } = state;
 
-    const piStarSafe = Math.max(0.005, piStar);
-    const piGap = pi - piStarSafe;
+    const piGapTaylor = taylorInflationGap(pi, ctrl);
+    const piGapPhillips = phillipsInflationGap(pi, ctrl);
     const yGap = clamp(y, -0.25, 0.25);
 
-    const Rtarget = rTarget + NORA_PARAMS.psiPi * piGap + NORA_PARAMS.psiY * yGap;
+    const Rtarget = rTarget + NORA_PARAMS.psiPi * piGapTaylor + NORA_PARAMS.psiY * yGap;
     const Rnew = clamp(
         Rprev * NORA_PARAMS.rhoR + (1 - NORA_PARAMS.rhoR) * Rtarget,
         0.001,
@@ -167,7 +185,7 @@ function stepNora(state, ctrl, dt) {
         NORA_PARAMS.kappa * yGap +
         fiscal * 0.018 +
         fiscalShock * 0.025 -
-        (1 - NORA_PARAMS.beta) * piGap +
+        (1 - NORA_PARAMS.beta) * piGapPhillips +
         laborDpi;
 
     const wageBill = labor.wageBill;
@@ -226,7 +244,7 @@ function stepNora(state, ctrl, dt) {
         return stepNora(
             {
                 y: 0,
-                pi: piStarSafe,
+                pi: ctrl.piBand ? PI_BAND.mid : Math.max(0.005, ctrl.piTarget / 100),
                 L: 0.55,
                 D: 0.45,
                 F: 0.35,
@@ -271,13 +289,23 @@ function noraStatus(derived, ctrl) {
         return 'FRONTFAG-SPENNING — HØY LØNN OG LEDIGHET';
     }
     if (derived.oilShock > 70) return 'HØY OLJE-I — ETTERSPØRSEL ETTER FASTLANDS-VARER';
-    if (derived.pi > ctrl.piTarget / 100 + 0.035) return 'KPI OVER MÅL — SENTRALBANK STRAMMER';
-    if (derived.pi < 0.005) return 'LAV INFLASJON — RENTE SENKES';
+    if (ctrl.piBand) {
+        if (derived.pi > PI_BAND.hi + 0.005) return 'KPI OVER 3 % — SENTRALBANK STRAMMER';
+        if (derived.pi < PI_BAND.lo - 0.003) return 'KPI UNDER 1 % — RENTE SENKES';
+        if (derived.pi >= PI_BAND.lo && derived.pi <= PI_BAND.hi && Math.abs(derived.y) < 0.03) {
+            return 'π INNEN MÅLBÅND 1–3 % — TAYLOR REAGERER IKKE PÅ π';
+        }
+    } else {
+        if (derived.pi > ctrl.piTarget / 100 + 0.035) return 'KPI OVER MÅL — SENTRALBANK STRAMMER';
+        if (derived.pi < ctrl.piTarget / 100 - 0.015) return 'KPI UNDER MÅL — RENTE SENKES';
+    }
+    if (derived.pi < 0.005) return 'SVÆRT LAV INFLASJON — RENTE SENKES';
     if (derived.spread > 0.3) return 'RICARDIANSK DOMINANS — C^R OVER C^L';
     if (derived.spread < -0.15) return 'ω HØY — LIKVIDITETSBEGRENSEDE DRIVER C';
     if (derived.u > 0.07) return 'LØNNSKURVE — LEDIGHET OVER NAIRU';
     if (derived.F > 0.85) return 'BANK LÅNER MYE I UTLANDET';
-    if (Math.abs(derived.y) < 0.02 && Math.abs(derived.pi - ctrl.piTarget / 100) < 0.006) {
+    const piEq = ctrl.piBand ? PI_BAND.mid : ctrl.piTarget / 100;
+    if (Math.abs(derived.y) < 0.02 && Math.abs(derived.pi - piEq) < 0.006) {
         return 'FASTLANDSLIKEVEKT — NORA-STRUKTUR STABIL';
     }
     if (derived.y > 0.05) return 'POSITIVT OUTPUT GAP — ETTERSPØRSEL PRESS';
@@ -528,6 +556,10 @@ function initNora() {
     const diagramHost = document.getElementById('nora-diagram');
     const frontfagToggle = document.getElementById('nora-frontfag');
     const frontfagFieldset = document.getElementById('nora-frontfag-fields');
+    const piBandToggle = document.getElementById('nora-pi-band');
+    const piTargetControl = document.getElementById('nora-pi-target-control');
+    const piTargetInput = document.getElementById('nora-pi-target');
+    const piTargetValEl = document.getElementById('nora-pi-target-val');
     if (!section || !canvas) return;
 
     let diagramSvg = null;
@@ -563,9 +595,14 @@ function initNora() {
         syncFrontfagUi(readControls());
     });
 
+    piBandToggle?.addEventListener('change', () => {
+        syncPiTargetUi(readControls());
+    });
+
     function readControls() {
         return {
             frontfag: Boolean(frontfagToggle?.checked),
+            piBand: Boolean(piBandToggle?.checked),
             omegaShare: sliders.omegaShare.value,
             policyRate: sliders.policyRate.value / 10,
             piTarget: sliders.piTarget.value / 10,
@@ -587,6 +624,17 @@ function initNora() {
             frontfagFieldset.removeAttribute('disabled');
         }
         if (laborCanvas) laborCanvas.classList.toggle('is-dimmed', !on);
+    }
+
+    function syncPiTargetUi(ctrl) {
+        const band = ctrl.piBand;
+        if (piTargetControl) piTargetControl.classList.toggle('nora-control--muted', band);
+        if (piTargetInput) piTargetInput.disabled = band;
+        if (piTargetValEl) {
+            piTargetValEl.textContent = band
+                ? '1–3 %'
+                : `${(sliders.piTarget.value / 10).toFixed(1)}%`;
+        }
     }
 
     const defaults = {
@@ -648,6 +696,7 @@ function initNora() {
     function updateHud() {
         const ctrl = readControls();
         syncFrontfagUi(ctrl);
+        syncPiTargetUi(ctrl);
         if (hud.y) hud.y.textContent = `${(derived.y * 100).toFixed(1)}%`;
         if (hud.pi) hud.pi.textContent = `${(derived.pi * 100).toFixed(2)}%`;
         if (hud.w) hud.w.textContent = `${(derived.W * 100).toFixed(1)}`;
@@ -827,6 +876,7 @@ function initNora() {
     });
 
     syncFrontfagUi(readControls());
+    syncPiTargetUi(readControls());
     resize();
     pushHistory();
     updateHud();
