@@ -843,6 +843,218 @@
 
         .forum-placeholder a { color: var(--neon-amber); text-decoration: underline; }
 
+        /* ===== MONIAC / Phillips-maskin ===== */
+        .moniac-wrap {
+            display: grid;
+            grid-template-columns: 1fr 280px;
+            gap: 1.5rem;
+            align-items: start;
+        }
+
+        .moniac-panel {
+            position: relative;
+            background: var(--panel);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 154, 60, 0.22);
+            padding: 1rem;
+            min-height: 420px;
+        }
+
+        .moniac-panel::before,
+        .moniac-panel::after {
+            content: '';
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            border: 2px solid var(--neon-amber);
+            box-shadow: 0 0 8px rgba(255, 154, 60, 0.45);
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .moniac-panel::before {
+            top: -2px;
+            left: -2px;
+            border-right: none;
+            border-bottom: none;
+        }
+
+        .moniac-panel::after {
+            bottom: -2px;
+            right: -2px;
+            border-left: none;
+            border-top: none;
+        }
+
+        #moniac-canvas {
+            display: block;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        .moniac-hud {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.75rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 154, 60, 0.15);
+        }
+
+        .moniac-readout {
+            text-align: center;
+            padding: 0.65rem 0.5rem;
+            background: rgba(10, 6, 4, 0.55);
+            border: 1px solid rgba(255, 154, 60, 0.2);
+        }
+
+        .moniac-readout .val {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 800;
+            font-size: 1.35rem;
+            color: var(--neon-amber);
+            text-shadow: 0 0 12px rgba(255, 154, 60, 0.6);
+            line-height: 1.2;
+        }
+
+        .moniac-readout .lbl {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.65rem;
+            letter-spacing: 0.2em;
+            color: var(--dim);
+            text-transform: uppercase;
+            margin-top: 0.25rem;
+        }
+
+        .moniac-status {
+            grid-column: 1 / -1;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.72rem;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--neon-pink);
+            text-align: center;
+            padding: 0.5rem;
+            border: 1px dashed rgba(255, 77, 139, 0.35);
+            background: rgba(255, 77, 139, 0.05);
+        }
+
+        .moniac-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .moniac-control {
+            background: rgba(10, 6, 4, 0.5);
+            border: 1px solid rgba(255, 154, 60, 0.18);
+            padding: 1rem 1.1rem;
+        }
+
+        .moniac-control header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 0.65rem;
+            gap: 0.5rem;
+        }
+
+        .moniac-control label {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.7rem;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+
+        .moniac-control .value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.9rem;
+            color: var(--neon-amber);
+            text-shadow: 0 0 8px rgba(255, 154, 60, 0.5);
+        }
+
+        .moniac-control input[type="range"] {
+            width: 100%;
+            height: 4px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: rgba(255, 154, 60, 0.15);
+            outline: none;
+            cursor: pointer;
+        }
+
+        .moniac-control input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            background: var(--neon-amber);
+            box-shadow: 0 0 10px var(--neon-amber);
+            border: 1px solid var(--bg-0);
+        }
+
+        .moniac-control input[type="range"]::-moz-range-thumb {
+            width: 14px;
+            height: 14px;
+            background: var(--neon-amber);
+            box-shadow: 0 0 10px var(--neon-amber);
+            border: 1px solid var(--bg-0);
+            border-radius: 0;
+        }
+
+        .moniac-note {
+            font-size: 0.92rem;
+            color: var(--muted);
+            line-height: 1.65;
+            margin-bottom: 2rem;
+            max-width: 72ch;
+        }
+
+        .moniac-note a {
+            color: var(--neon-amber);
+            text-decoration: underline;
+            text-underline-offset: 3px;
+        }
+
+        .moniac-actions {
+            margin-top: 0.5rem;
+        }
+
+        .moniac-actions .btn {
+            width: 100%;
+            text-align: center;
+        }
+
+        @media (max-width: 900px) {
+            .moniac-wrap {
+                grid-template-columns: 1fr;
+            }
+
+            .moniac-controls {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 1rem;
+            }
+
+            .moniac-actions {
+                grid-column: 1 / -1;
+            }
+        }
+
+        @media (max-width: 520px) {
+            .moniac-controls {
+                grid-template-columns: 1fr;
+            }
+
+            .moniac-hud {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .moniac-status {
+                grid-column: 1 / -1;
+            }
+        }
+
         /* ===== Footer ===== */
         footer {
             border-top: 1px solid rgba(255, 154, 60, 0.2);
@@ -1109,6 +1321,7 @@
                 <ul class="nav-links">
                     <li><a href="#temaer">Temaer</a></li>
                     <li><a href="#om">Om</a></li>
+                    <li><a href="#moniac">MONIAC</a></li>
                     <li><a href="#episoder">Episoder</a></li>
                     <li><a href="#forum">Forum</a></li>
                 </ul>
@@ -1326,8 +1539,76 @@
             </div>
         </section>
 
+        <section class="section" id="moniac">
+            <div class="section-label">03 // MONIAC</div>
+            <h2>Phillips-maskinen</h2>
+            <p class="subtitle">Hydraulisk modell av nasjonaløkonomien — MONIAC MK.II</p>
+            <p class="moniac-note">
+                I 1949 bygde økonomen Bill Phillips en fysisk datamaskin der farget vann i glassbeholdere
+                representerte penger, skatter og sparing. Denne interaktive versjonen er inspirert av
+                <strong>MONIAC</strong> (Monetary National Income Analogue Computer) og Skravleklassens
+                makroøkonomi-temaer — juster pumper og ventiler for å se sirkulasjonen.
+                <a href="https://en.wikipedia.org/wiki/Phillips_Machine" target="_blank" rel="noopener noreferrer">Les mer om originalen ↗</a>
+            </p>
+
+            <div class="moniac-wrap">
+                <div class="moniac-panel">
+                    <canvas id="moniac-canvas" aria-label="Hydraulisk modell av nasjonaløkonomien med tanker og rør"></canvas>
+                    <div class="moniac-hud" aria-live="polite">
+                        <div class="moniac-readout">
+                            <div class="val" id="moniac-bnp">042</div>
+                            <div class="lbl">BNP-indeks</div>
+                        </div>
+                        <div class="moniac-readout">
+                            <div class="val" id="moniac-ledighet">6.8%</div>
+                            <div class="lbl">Ledighet</div>
+                        </div>
+                        <div class="moniac-readout">
+                            <div class="val" id="moniac-inflasjon">1.2%</div>
+                            <div class="lbl">Inflasjonstrykk</div>
+                        </div>
+                        <p class="moniac-status" id="moniac-status">NOMINAL SIRKULASJON STABIL</p>
+                    </div>
+                </div>
+
+                <aside class="moniac-controls" aria-label="Styring av hydraulisk modell">
+                    <div class="moniac-control">
+                        <header>
+                            <label for="moniac-gov">Offentlige utgifter</label>
+                            <span class="value" id="moniac-gov-val">35%</span>
+                        </header>
+                        <input type="range" id="moniac-gov" min="5" max="80" value="35" aria-valuemin="5" aria-valuemax="80">
+                    </div>
+                    <div class="moniac-control">
+                        <header>
+                            <label for="moniac-rate">Styringsrente</label>
+                            <span class="value" id="moniac-rate-val">4.5%</span>
+                        </header>
+                        <input type="range" id="moniac-rate" min="0" max="9" step="0.5" value="4.5" aria-valuemin="0" aria-valuemax="9">
+                    </div>
+                    <div class="moniac-control">
+                        <header>
+                            <label for="moniac-tax">Skattesats</label>
+                            <span class="value" id="moniac-tax-val">28%</span>
+                        </header>
+                        <input type="range" id="moniac-tax" min="10" max="55" value="28" aria-valuemin="10" aria-valuemax="55">
+                    </div>
+                    <div class="moniac-control">
+                        <header>
+                            <label for="moniac-mpc">Marginal forbruksandel</label>
+                            <span class="value" id="moniac-mpc-val">72%</span>
+                        </header>
+                        <input type="range" id="moniac-mpc" min="45" max="92" value="72" aria-valuemin="45" aria-valuemax="92">
+                    </div>
+                    <div class="moniac-actions">
+                        <button type="button" class="btn" id="moniac-reset">› Nullstill modell</button>
+                    </div>
+                </aside>
+            </div>
+        </section>
+
         <section class="section" id="episoder">
-            <div class="section-label">03 // EPISODER</div>
+            <div class="section-label">04 // EPISODER</div>
             <h2>Siste sendinger</h2>
             <p class="subtitle">Et utvalg av nyere episoder.</p>
             <div class="episode-list">
@@ -1366,7 +1647,7 @@
         </section>
 
         <section class="section" id="forum">
-            <div class="section-label">04 // DISKUSJON</div>
+            <div class="section-label">05 // DISKUSJON</div>
             <h2>Forum</h2>
             <p class="subtitle">Snakk med andre lyttere — velg et tema over for å starte samtalen.</p>
             <div style="text-align:center;margin-bottom:2rem;">
@@ -1392,6 +1673,7 @@
         </p>
     </footer>
 
+    <script src="js/moniac.js" defer></script>
     <script>
         // ===== Mobilmeny =====
         (function initNav() {
