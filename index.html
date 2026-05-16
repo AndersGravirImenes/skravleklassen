@@ -1164,6 +1164,204 @@
             }
         }
 
+        /* ===== HANK — heterogen NK-modell ===== */
+        .hank-wrap {
+            display: grid;
+            grid-template-columns: 1fr 280px;
+            gap: 1.5rem;
+            align-items: start;
+        }
+
+        .hank-panel {
+            position: relative;
+            background: linear-gradient(165deg, rgba(36, 22, 48, 0.9) 0%, rgba(18, 10, 28, 0.95) 100%);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(94, 184, 232, 0.28);
+            padding: 1rem;
+            min-height: 480px;
+            overflow: hidden;
+        }
+
+        .hank-panel::before,
+        .hank-panel::after {
+            content: '';
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            border: 2px solid var(--neon-pink);
+            box-shadow: 0 0 8px rgba(255, 77, 139, 0.4);
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .hank-panel::before {
+            top: -2px;
+            left: -2px;
+            border-right: none;
+            border-bottom: none;
+        }
+
+        .hank-panel::after {
+            bottom: -2px;
+            right: -2px;
+            border-left: none;
+            border-top: none;
+        }
+
+        .hank-viewport {
+            position: relative;
+            width: 100%;
+            min-height: 460px;
+            border: 1px solid rgba(94, 184, 232, 0.2);
+            background:
+                radial-gradient(ellipse at 30% 15%, rgba(94, 184, 232, 0.12) 0%, transparent 45%),
+                radial-gradient(ellipse at 80% 80%, rgba(232, 146, 58, 0.1) 0%, transparent 50%),
+                #120a18;
+        }
+
+        .hank-watermark {
+            position: absolute;
+            top: 0.65rem;
+            left: 0.75rem;
+            z-index: 3;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.62rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: rgba(94, 184, 232, 0.6);
+            pointer-events: none;
+        }
+
+        #hank-canvas {
+            display: block;
+            width: 100%;
+            height: 460px;
+            touch-action: pan-y;
+        }
+
+        .hank-hud {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.75rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(94, 184, 232, 0.2);
+        }
+
+        .hank-readout .val {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 800;
+            font-size: 1.35rem;
+            color: var(--neon-gold);
+            text-shadow: 0 0 12px rgba(255, 200, 87, 0.35);
+        }
+
+        .hank-readout .lbl {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.62rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--dim);
+            margin-top: 0.2rem;
+        }
+
+        .hank-status {
+            grid-column: 1 / -1;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.72rem;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--neon-pink);
+            text-align: center;
+            padding: 0.5rem;
+            border: 1px solid rgba(255, 77, 139, 0.25);
+            background: rgba(255, 77, 139, 0.06);
+        }
+
+        .hank-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .hank-control header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 0.35rem;
+        }
+
+        .hank-control label {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.72rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+
+        .hank-control .value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.85rem;
+            color: var(--neon-gold);
+        }
+
+        .hank-control input[type="range"] {
+            width: 100%;
+            accent-color: var(--neon-pink);
+        }
+
+        .hank-note {
+            font-size: 0.92rem;
+            color: var(--muted);
+            line-height: 1.65;
+            margin-bottom: 2rem;
+            max-width: 72ch;
+        }
+
+        .hank-note strong { color: var(--text); }
+
+        .hank-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .hank-actions .btn {
+            width: 100%;
+            text-align: center;
+        }
+
+        @media (max-width: 900px) {
+            .hank-wrap {
+                grid-template-columns: 1fr;
+            }
+
+            .hank-controls {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .hank-actions {
+                grid-column: 1 / -1;
+            }
+        }
+
+        @media (max-width: 520px) {
+            .hank-controls {
+                grid-template-columns: 1fr;
+            }
+
+            .hank-hud {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .hank-viewport,
+            #hank-canvas {
+                min-height: 360px;
+                height: 360px;
+            }
+        }
+
         /* ===== Footer ===== */
         footer {
             border-top: 1px solid rgba(255, 154, 60, 0.2);
@@ -1431,6 +1629,7 @@
                     <li><a href="#temaer">Temaer</a></li>
                     <li><a href="#om">Om</a></li>
                     <li><a href="#moniac">MONIAC</a></li>
+                    <li><a href="#hank">HANK</a></li>
                     <li><a href="#episoder">Episoder</a></li>
                     <li><a href="#forum">Forum</a></li>
                 </ul>
@@ -1763,8 +1962,108 @@
             </div>
         </section>
 
+        <section class="section" id="hank">
+            <div class="section-label">04 // HANK</div>
+            <h2>Heterogen spice-økonomi</h2>
+            <p class="subtitle">HANK MK.I — Fremen vs CHOAM på Arrakis</p>
+            <p class="hank-note">
+                <strong>HANK</strong> (Heterogen Arrakis New Keynesian): to agenttyper deler spice-produksjonen.
+                <strong>Fremen</strong> (andel <strong>λ</strong>) er hand-to-mouth og bruker hele lønnsinntekten;
+                <strong>CHOAM / stormannsgårder</strong> (<strong>1−λ</strong>) sparer i obligasjoner og har lavere MPC.
+                Aggregert forbruk <strong>C = λ·c<sup>HM</sup> + (1−λ)·c<sup>R</sup></strong> gir andre multiplikatorer enn MONIAC.
+                New Keynesian kjerne: IS-kurve, Phillips-kurve (nominal rigiditet / <strong>θ</strong>) og
+                Taylor-regel for <strong>Spacing Guild</strong>-renten (<strong>i</strong>).
+                Keiserlig etterspørsel (<strong>G</strong>), sandworm-sjokk (<strong>ν</strong>) og inflasjonsmål (<strong>π*</strong>)
+                driver output gap <strong>y</strong> og spice-prispress <strong>π</strong>.
+            </p>
+
+            <div class="hank-wrap">
+                <div class="hank-panel">
+                    <div class="hank-viewport">
+                        <span class="hank-watermark">ARRAKIS // HANK-SIM</span>
+                        <canvas id="hank-canvas" aria-label="HANK-simulering: output gap, inflasjon og forbruk mellom Fremen og CHOAM"></canvas>
+                    </div>
+                    <div class="hank-hud" aria-live="polite">
+                        <div class="hank-readout">
+                            <div class="val" id="hank-y">0.0%</div>
+                            <div class="lbl">Output gap (y)</div>
+                        </div>
+                        <div class="hank-readout">
+                            <div class="val" id="hank-pi">2.00%</div>
+                            <div class="lbl">Spice-π</div>
+                        </div>
+                        <div class="hank-readout">
+                            <div class="val" id="hank-spread">0%</div>
+                            <div class="lbl">Forbruksspred</div>
+                        </div>
+                        <div class="hank-readout">
+                            <div class="val" id="hank-u">4.2%</div>
+                            <div class="lbl">Sietch-ledighet</div>
+                        </div>
+                        <p class="hank-status" id="hank-status">HANK-LIKEVEKT — NOMINAL RIGIDITET BIND</p>
+                    </div>
+                </div>
+
+                <aside class="hank-controls" aria-label="Styring av HANK-modellen">
+                    <div class="hank-control">
+                        <header>
+                            <label for="hank-fremen">λ — Fremen-andel (HtM)</label>
+                            <span class="value" id="hank-fremen-val">68%</span>
+                        </header>
+                        <input type="range" id="hank-fremen" min="40" max="90" value="68">
+                    </div>
+                    <div class="hank-control">
+                        <header>
+                            <label for="hank-rate">r* — Guild styringsrente</label>
+                            <span class="value" id="hank-rate-val">4.5%</span>
+                        </header>
+                        <input type="range" id="hank-rate" min="0" max="90" step="5" value="45">
+                    </div>
+                    <div class="hank-control">
+                        <header>
+                            <label for="hank-g">G — Keiserlig etterspørsel</label>
+                            <span class="value" id="hank-g-val">18%</span>
+                        </header>
+                        <input type="range" id="hank-g" min="0" max="50" value="18">
+                    </div>
+                    <div class="hank-control">
+                        <header>
+                            <label for="hank-pi-target">π* — Inflasjonsmål</label>
+                            <span class="value" id="hank-pi-target-val">2.0%</span>
+                        </header>
+                        <input type="range" id="hank-pi-target" min="0" max="50" step="5" value="20">
+                    </div>
+                    <div class="hank-control">
+                        <header>
+                            <label for="hank-worm">ν — Sandworm-sjokk</label>
+                            <span class="value" id="hank-worm-val">0%</span>
+                        </header>
+                        <input type="range" id="hank-worm" min="0" max="100" value="0">
+                    </div>
+                    <div class="hank-control">
+                        <header>
+                            <label for="hank-stick">θ — Prisrigiditet</label>
+                            <span class="value" id="hank-stick-val">65%</span>
+                        </header>
+                        <input type="range" id="hank-stick" min="20" max="95" value="65">
+                    </div>
+                    <div class="hank-control">
+                        <header>
+                            <label for="hank-mpc">MPC — CHOAM (sparere)</label>
+                            <span class="value" id="hank-mpc-val">55%</span>
+                        </header>
+                        <input type="range" id="hank-mpc" min="20" max="90" value="55">
+                    </div>
+                    <div class="hank-actions">
+                        <button type="button" class="btn" id="hank-reset">› Nullstill modell</button>
+                        <button type="button" class="btn" id="hank-pause">› Pause / fortsett</button>
+                    </div>
+                </aside>
+            </div>
+        </section>
+
         <section class="section" id="episoder">
-            <div class="section-label">04 // EPISODER</div>
+            <div class="section-label">05 // EPISODER</div>
             <h2>Siste sendinger</h2>
             <p class="subtitle">Et utvalg av nyere episoder.</p>
             <div class="episode-list">
@@ -1803,7 +2102,7 @@
         </section>
 
         <section class="section" id="forum">
-            <div class="section-label">05 // DISKUSJON</div>
+            <div class="section-label">06 // DISKUSJON</div>
             <h2>Forum</h2>
             <p class="subtitle">Snakk med andre lyttere — velg et tema over for å starte samtalen.</p>
             <div style="text-align:center;margin-bottom:2rem;">
@@ -1838,6 +2137,7 @@
     }
     </script>
     <script type="module" src="js/moniac.js"></script>
+    <script type="module" src="js/hank.js"></script>
     <script>
         // ===== Mobilmeny =====
         (function initNav() {
