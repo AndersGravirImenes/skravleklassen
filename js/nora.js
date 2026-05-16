@@ -31,14 +31,90 @@ const NORA_PARAMS = {
     yPot: 1,
 };
 
+/** Arbeidsmarked — forenklet kap. 2.3–2.4 (lønnskurve + frontfag) */
+const LABOR = {
+    Lf_ss: 0.71,
+    E_ss: 0.683,
+    W_ss: 1,
+    nuU: 0.11,
+    phiPiM: 0.09,
+    rhoE: 0.82,
+    rhoLf: 0.9,
+    psiW: 0.07,
+    psiU: 0.14,
+    etaN: 0.38,
+    alphaN: 0.42,
+};
+
 function clamp(v, lo, hi) {
     return Math.max(lo, Math.min(hi, v));
+}
+
+/**
+ * Arbeidsmarked med frontfag: Nash-lønn i industri → treg W, lønnskurve, etterspørsel N^d.
+ * Uten frontfag: fleksibel lønn og Okun-lignende ledighet (klassisk reduksjon).
+ */
+function stepLaborMarket(labor, ctrl, macro, dt) {
+    const { y, mfg, Y } = macro;
+    const uSS = NORA_PARAMS.nairu;
+    let { W, E, Lf } = labor;
+
+    if (!ctrl.frontfag) {
+        const u = clamp(uSS - 0.28 * y, 0.015, 0.12);
+        W = LABOR.W_ss * (1 + 0.35 * y);
+        E = LABOR.E_ss * (1 + 0.32 * y);
+        Lf = LABOR.Lf_ss;
+        return {
+            W,
+            E: clamp(E, 0.55, 0.78),
+            Lf,
+            u,
+            Wnb: W,
+            Nd: E,
+            wageBill: 0.58 * W,
+            mode: 'flex',
+        };
+    }
+
+    const uPrev = clamp((Lf - E) / Math.max(0.05, Lf), 0.012, 0.18);
+    const yM = mfg / Math.max(0.2, 0.36 * Y);
+    const piM = yM - 1 + 0.1 * y;
+    const rhoW = ctrl.wageStick / 100;
+    const zV = ctrl.wageShock / 100;
+
+    const logWnb = -LABOR.nuU * Math.log(uPrev / uSS) + LABOR.phiPiM * piM + zV * 0.045;
+    const Wnb = Math.exp(clamp(logWnb, -0.14, 0.14));
+    const Wnew = clamp(rhoW * W + (1 - rhoW) * Wnb, 0.86, 1.14);
+
+    const Nd =
+        LABOR.E_ss *
+        Math.pow(Math.max(0.55, yM), LABOR.alphaN) *
+        Math.pow(Wnew / LABOR.W_ss, -LABOR.etaN);
+    const Enew = clamp(LABOR.rhoE * E + (1 - LABOR.rhoE) * Nd, 0.55, 0.78);
+    const Lfnew = clamp(
+        LABOR.rhoLf * Lf + (1 - LABOR.rhoLf) * (LABOR.Lf_ss + LABOR.psiW * (Wnew - 1) - LABOR.psiU * uPrev),
+        0.62,
+        0.78,
+    );
+    const u = clamp((Lfnew - Enew) / Math.max(0.05, Lfnew), 0.012, 0.18);
+
+    return {
+        W: Wnew,
+        E: Enew,
+        Lf: Lfnew,
+        u,
+        Wnb,
+        Nd,
+        wageBill: 0.58 * Wnew,
+        mode: 'frontfag',
+    };
 }
 
 /**
  * Ett tidssteg — forenklet NORA-lignende system.
  * y: output gap fastland, pi: KPI-inflasjon, L: firmalån, D: innskudd,
  * F: netto utenlandsgjeld bank, Gb: offentlig saldo (relativ).
+ * W, E, Lf: reallønn, sysselsetting, arbeidsstyrke (frontfag-blokk).
  */
 function stepNora(state, ctrl, dt) {
     const omega = ctrl.omegaShare / 100;
@@ -53,7 +129,7 @@ function stepNora(state, ctrl, dt) {
     const fiscalShock = ctrl.fiscalShock / 100;
     const rpShock = ctrl.foreignRp / 100;
 
-    const { y, pi, L, D, F, Gb, Rprev } = state;
+    const { y, pi, L, D, F, Gb, Rprev, W, E, Lf } = state;
 
     const piStarSafe = Math.max(0.005, piStar);
     const piGap = pi - piStarSafe;
@@ -70,26 +146,33 @@ function stepNora(state, ctrl, dt) {
     const fiscal = gShare * 0.32 + giShare * 0.22 + gpfgSpend + fiscalShock * 0.25;
     const rp = 0.02 + rpShock * 0.04 - oilInv * 0.004;
 
+    const Y = NORA_PARAMS.yPot * (1 + y);
+    const mfg = 0.36 * Y;
+    const serv = 0.64 * Y;
+
+    const labor = stepLaborMarket({ W, E, Lf }, ctrl, { y, mfg, Y }, dt);
+    const empGap = labor.E / LABOR.E_ss - 1;
+    const laborDy = ctrl.frontfag ? 0.22 * empGap - 0.08 * (labor.W - 1) : 0;
+    const laborDpi = ctrl.frontfag ? 0.1 * (labor.W - 1) + 0.06 * empGap : 0;
+
     const dy =
         -NORA_PARAMS.sigmaIS * (Rnew - rTarget) +
         fiscal * 0.38 +
         oilInv * 0.08 -
         rp * 1.8 * F -
-        0.12 * yGap;
+        0.12 * yGap +
+        laborDy;
 
     const dpi =
         NORA_PARAMS.kappa * yGap +
         fiscal * 0.018 +
         fiscalShock * 0.025 -
-        (1 - NORA_PARAMS.beta) * piGap;
+        (1 - NORA_PARAMS.beta) * piGap +
+        laborDpi;
 
-    const Y = NORA_PARAMS.yPot * (1 + y);
-    const mfg = 0.36 * Y;
-    const serv = 0.64 * Y;
-
-    const wageBill = 0.58 * (1 + 0.38 * y);
+    const wageBill = labor.wageBill;
     const transfers = gShare * 0.1 + gpfgSpend * 0.4;
-    const benefits = Math.max(0, -y) * 0.045;
+    const benefits = Math.max(0, labor.u - NORA_PARAMS.nairu) * 0.35;
     const dividends = ricardian * (0.11 + 0.14 * y);
     const taxRate = 0.32;
 
@@ -115,7 +198,7 @@ function stepNora(state, ctrl, dt) {
     const dGb = (wageBill * taxRate + gpfgSpend - gCons - iGov - transfers - benefits) * dt * 1.6;
 
     const spread = omega > 0.05 ? (cR / ricardian - cL / omega) / Math.max(0.05, cAgg) : 0;
-    const u = clamp(NORA_PARAMS.nairu - 0.3 * y + fiscalShock * 0.01, 0.015, 0.12);
+    const u = labor.u;
 
     const flows = {
         cAgg,
@@ -132,6 +215,8 @@ function stepNora(state, ctrl, dt) {
         firmBorrow: iPriv * 2.2,
         deposits: D,
         foreignBorrow: rpShock * 0.5,
+        W: labor.W,
+        Wnb: labor.Wnb,
     };
 
     const yNext = clamp(y + dy * dt, -0.2, 0.2);
@@ -139,7 +224,18 @@ function stepNora(state, ctrl, dt) {
 
     if (!Number.isFinite(yNext) || !Number.isFinite(piNext)) {
         return stepNora(
-            { y: 0, pi: piStarSafe, L: 0.55, D: 0.45, F: 0.35, Gb: 0.1, Rprev: rTarget },
+            {
+                y: 0,
+                pi: piStarSafe,
+                L: 0.55,
+                D: 0.45,
+                F: 0.35,
+                Gb: 0.1,
+                Rprev: rTarget,
+                W: 1,
+                E: LABOR.E_ss,
+                Lf: LABOR.Lf_ss,
+            },
             ctrl,
             0,
         );
@@ -160,16 +256,26 @@ function stepNora(state, ctrl, dt) {
         flows,
         omega,
         ricardian,
+        W: labor.W,
+        E: labor.E,
+        Lf: labor.Lf,
+        Wnb: labor.Wnb,
+        Nd: labor.Nd,
+        laborMode: labor.mode,
     };
 }
 
 function noraStatus(derived, ctrl) {
-    if (ctrl.oilShock > 70) return 'HØY OLJE-I — ETTERSPØRSEL ETTER FASTLANDS-VARER';
+    if (!ctrl.frontfag) return 'FLEKSIBEL LØNN — LEDIGHET FØLGER BNP (UTEN FRONTFAG)';
+    if (derived.W > 1.04 && derived.u > NORA_PARAMS.nairu + 0.015) {
+        return 'FRONTFAG-SPENNING — HØY LØNN OG LEDIGHET';
+    }
+    if (derived.oilShock > 70) return 'HØY OLJE-I — ETTERSPØRSEL ETTER FASTLANDS-VARER';
     if (derived.pi > ctrl.piTarget / 100 + 0.035) return 'KPI OVER MÅL — SENTRALBANK STRAMMER';
     if (derived.pi < 0.005) return 'LAV INFLASJON — RENTE SENKES';
     if (derived.spread > 0.3) return 'RICARDIANSK DOMINANS — C^R OVER C^L';
     if (derived.spread < -0.15) return 'ω HØY — LIKVIDITETSBEGRENSEDE DRIVER C';
-    if (derived.u > 0.07) return 'ARBEIDSLØSHET OVER NAIRU';
+    if (derived.u > 0.07) return 'LØNNSKURVE — LEDIGHET OVER NAIRU';
     if (derived.F > 0.85) return 'BANK LÅNER MYE I UTLANDET';
     if (Math.abs(derived.y) < 0.02 && Math.abs(derived.pi - ctrl.piTarget / 100) < 0.006) {
         return 'FASTLANDSLIKEVEKT — NORA-STRUKTUR STABIL';
@@ -312,6 +418,81 @@ function buildDiagramSvg() {
     return svg;
 }
 
+/** Fig. 2.2 — lønnskurve vs arbeids etterspørsel (W på vertikal akse, E horisontalt). */
+function drawLaborMarket(ctx, w, h, labor, ctrl) {
+    ctx.clearRect(0, 0, w, h);
+    const pad = { l: 44, r: 12, t: 22, b: 28 };
+    const cw = w - pad.l - pad.r;
+    const ch = h - pad.t - pad.b;
+
+    const Emin = 0.52;
+    const Emax = 0.78;
+    const Wmin = 0.88;
+    const Wmax = 1.12;
+    const mapX = (e) => pad.l + ((e - Emin) / (Emax - Emin)) * cw;
+    const mapY = (wv) => pad.t + ch - ((wv - Wmin) / (Wmax - Wmin)) * ch;
+
+    ctx.strokeStyle = NORA_COLORS.grid;
+    for (let i = 0; i <= 4; i++) {
+        const gy = pad.t + (ch * i) / 4;
+        ctx.beginPath();
+        ctx.moveTo(pad.l, gy);
+        ctx.lineTo(pad.l + cw, gy);
+        ctx.stroke();
+    }
+
+    const uSS = NORA_PARAMS.nairu;
+    const pts = 24;
+    ctx.strokeStyle = NORA_COLORS.fiscalBright;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let i = 0; i <= pts; i++) {
+        const e = Emin + ((Emax - Emin) * i) / pts;
+        const lf = LABOR.Lf_ss;
+        const u = Math.max(0.012, (lf - e) / lf);
+        const logW = -LABOR.nuU * Math.log(u / uSS);
+        const wv = clamp(Math.exp(logW), Wmin, Wmax);
+        const x = mapX(e);
+        const y = mapY(wv);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    const yM = 1 + 0.05 * (labor.E / LABOR.E_ss - 1);
+    ctx.strokeStyle = NORA_COLORS.mainlandBright;
+    ctx.beginPath();
+    for (let i = 0; i <= pts; i++) {
+        const wv = Wmin + ((Wmax - Wmin) * i) / pts;
+        const nd =
+            LABOR.E_ss * Math.pow(Math.max(0.55, yM), LABOR.alphaN) * Math.pow(wv, -LABOR.etaN);
+        const e = clamp(nd, Emin, Emax);
+        const x = mapX(e);
+        const y = mapY(wv);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    const ex = mapX(labor.E);
+    const ey = mapY(labor.W);
+    ctx.fillStyle = NORA_COLORS.oil;
+    ctx.beginPath();
+    ctx.arc(ex, ey, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = NORA_COLORS.muted;
+    ctx.font = '9px "Share Tech Mono", monospace';
+    ctx.fillText('Lønnskurve', pad.l, pad.t - 6);
+    ctx.fillText('N^d (industri)', pad.l + cw - 52, pad.t - 6);
+    ctx.fillText('E →', pad.l + cw - 20, h - 8);
+    ctx.fillText('W ↑', 6, pad.t + 10);
+    ctx.fillStyle = NORA_COLORS.text;
+    ctx.font = '10px Rajdhani, sans-serif';
+    const modeLbl = ctrl.frontfag ? 'Frontfag PÅ' : 'Fleksibel lønn';
+    ctx.fillText(modeLbl, pad.l, h - 6);
+}
+
 function updateDiagramFlows(svg, flows) {
     if (!svg || !flows) return;
     const scale = (v, cap = 1) => clamp(v / cap, 0.08, 1);
@@ -343,7 +524,10 @@ function updateDiagramFlows(svg, flows) {
 function initNora() {
     const section = document.getElementById('nora');
     const canvas = document.getElementById('nora-canvas');
+    const laborCanvas = document.getElementById('nora-labor-canvas');
     const diagramHost = document.getElementById('nora-diagram');
+    const frontfagToggle = document.getElementById('nora-frontfag');
+    const frontfagFieldset = document.getElementById('nora-frontfag-fields');
     if (!section || !canvas) return;
 
     let diagramSvg = null;
@@ -355,9 +539,10 @@ function initNora() {
     const hud = {
         y: document.getElementById('nora-y'),
         pi: document.getElementById('nora-pi'),
-        c: document.getElementById('nora-c'),
+        w: document.getElementById('nora-w'),
         u: document.getElementById('nora-u'),
         status: document.getElementById('nora-status'),
+        mode: document.getElementById('nora-mode'),
     };
 
     const sliders = {
@@ -370,10 +555,17 @@ function initNora() {
         gpfgRule: bindSlider('nora-gpfg', 'nora-gpfg-val', (v) => `${v}%`),
         fiscalShock: bindSlider('nora-fiscal', 'nora-fiscal-val', (v) => `${v}%`),
         foreignRp: bindSlider('nora-foreign', 'nora-foreign-val', (v) => `${v}%`),
+        wageStick: bindSlider('nora-wage-stick', 'nora-wage-stick-val', (v) => `${v}%`),
+        wageShock: bindSlider('nora-wage-shock', 'nora-wage-shock-val', (v) => `${v}%`),
     };
+
+    frontfagToggle?.addEventListener('change', () => {
+        syncFrontfagUi(readControls());
+    });
 
     function readControls() {
         return {
+            frontfag: Boolean(frontfagToggle?.checked),
             omegaShare: sliders.omegaShare.value,
             policyRate: sliders.policyRate.value / 10,
             piTarget: sliders.piTarget.value / 10,
@@ -383,10 +575,29 @@ function initNora() {
             gpfgRule: sliders.gpfgRule.value,
             fiscalShock: sliders.fiscalShock.value,
             foreignRp: sliders.foreignRp.value,
+            wageStick: sliders.wageStick?.value ?? 75,
+            wageShock: sliders.wageShock?.value ?? 0,
         };
     }
 
-    const defaults = { y: 0, pi: 0.02, L: 0.55, D: 0.45, F: 0.35, Gb: 0.1, Rprev: 0.045 };
+    function syncFrontfagUi(ctrl) {
+        const on = ctrl.frontfag;
+        if (frontfagFieldset) frontfagFieldset.disabled = !on;
+        if (laborCanvas) laborCanvas.classList.toggle('is-dimmed', !on);
+    }
+
+    const defaults = {
+        y: 0,
+        pi: 0.02,
+        L: 0.55,
+        D: 0.45,
+        F: 0.35,
+        Gb: 0.1,
+        Rprev: 0.045,
+        W: 1,
+        E: LABOR.E_ss,
+        Lf: LABOR.Lf_ss,
+    };
     let state = { ...defaults };
     let derived = stepNora(state, readControls(), 0);
     const history = { y: [], pi: [], c: [] };
@@ -395,8 +606,11 @@ function initNora() {
     let rafId = 0;
     let reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const ctx = canvas.getContext('2d');
+    const lctx = laborCanvas?.getContext('2d');
     let w = 0;
     let h = 0;
+    let lw = 0;
+    let lh = 0;
     let dpr = 1;
     const isStandalone = document.body?.classList.contains('nora-page') || section.tagName === 'MAIN';
 
@@ -408,6 +622,14 @@ function initNora() {
         canvas.width = w * dpr;
         canvas.height = h * dpr;
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        if (laborCanvas && lctx) {
+            const lr = laborCanvas.getBoundingClientRect();
+            lw = Math.max(200, lr.width);
+            lh = Math.max(140, lr.height);
+            laborCanvas.width = lw * dpr;
+            laborCanvas.height = lh * dpr;
+            lctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
     }
 
     function pushHistory() {
@@ -422,10 +644,12 @@ function initNora() {
 
     function updateHud() {
         const ctrl = readControls();
+        syncFrontfagUi(ctrl);
         if (hud.y) hud.y.textContent = `${(derived.y * 100).toFixed(1)}%`;
         if (hud.pi) hud.pi.textContent = `${(derived.pi * 100).toFixed(2)}%`;
-        if (hud.c) hud.c.textContent = `${(derived.flows.cAgg * 100).toFixed(0)}`;
+        if (hud.w) hud.w.textContent = `${(derived.W * 100).toFixed(1)}`;
         if (hud.u) hud.u.textContent = `${(derived.u * 100).toFixed(1)}%`;
+        if (hud.mode) hud.mode.textContent = ctrl.frontfag ? 'Frontfag' : 'Fleksibel';
         if (hud.status) hud.status.textContent = noraStatus(derived, ctrl);
         updateDiagramFlows(diagramSvg, derived.flows);
     }
@@ -502,11 +726,15 @@ function initNora() {
     }
 
     function draw() {
+        const ctrl = readControls();
         ctx.clearRect(0, 0, w, h);
         const pad = 12;
         const chartH = h * 0.48;
         drawChart(pad, pad, w - pad * 2, chartH);
         drawSectors(pad, pad + chartH + 8, w - pad * 2, h - chartH - pad - 16);
+        if (lctx && laborCanvas) {
+            drawLaborMarket(lctx, lw, lh, derived, ctrl);
+        }
     }
 
     function tick(dt) {
@@ -523,6 +751,9 @@ function initNora() {
                 F: derived.F,
                 Gb: derived.Gb,
                 Rprev: derived.Rprev,
+                W: derived.W,
+                E: derived.E,
+                Lf: derived.Lf,
             };
         }
         pushHistory();
@@ -592,6 +823,7 @@ function initNora() {
         if (!document.hidden && running) startLoop();
     });
 
+    syncFrontfagUi(readControls());
     resize();
     pushHistory();
     updateHud();

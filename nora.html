@@ -43,7 +43,8 @@
             Husholdninger: andel <strong>ω</strong> likviditetsbegrensede (forbruker inntekt netto skatt)
             og <strong>1−ω</strong> Ricardianske (glatter forbruk via innskudd og aksjer).
             Aggregert forbruk <strong>C<sub>t</sub> = ωC<sup>L</sup><sub>t</sub> + (1−ω)C<sup>R</sup><sub>t</sub></strong> (likn. 2.10).
-            Lønnsdannelse følger <strong>frontfags-/lønnskurve</strong>-logikk; sentralbanken setter
+            Med <strong>frontfag</strong> på: lønnskurve og industrinorm (kap. 2.4); av: fleksibel lønn og Okun-ledighet.
+            Sentralbanken setter
             nominell rente med en <strong>Taylor-regel</strong> (likn. 2.51, ψ<sub>π</sub>≈1,6, ψ<sub>Y</sub>≈0,12).
             Simulatoren er en pedagogisk forkortelse — ikke offisiell NORA-kode.
             <a href="Nora/NOT2024-04.pdf" target="_blank" rel="noopener">NOT 2024/4 (PDF) ↗</a>
@@ -53,6 +54,10 @@
             <div class="nora-panel">
                 <span class="nora-watermark">FASTLAND · FIG. 2.1</span>
                 <div class="nora-diagram-host" id="nora-diagram"></div>
+                <div class="nora-labor-wrap">
+                    <p class="nora-labor-title">Arbeidsmarked · fig. 2.2</p>
+                    <canvas id="nora-labor-canvas" aria-label="Lønnskurve og arbeids etterspørsel"></canvas>
+                </div>
                 <div class="nora-chart-wrap">
                     <canvas id="nora-canvas" aria-label="Tidsserie: output gap, inflasjon og aggregert forbruk"></canvas>
                 </div>
@@ -66,18 +71,45 @@
                         <div class="lbl">Inflasjon (π)</div>
                     </div>
                     <div class="nora-readout">
-                        <div class="val" id="nora-c">—</div>
-                        <div class="lbl">Agg. C</div>
+                        <div class="val" id="nora-w">—</div>
+                        <div class="lbl">Reallønn W</div>
                     </div>
                     <div class="nora-readout">
                         <div class="val" id="nora-u">3.8%</div>
                         <div class="lbl">Ledighet (U)</div>
+                    </div>
+                    <div class="nora-readout nora-readout--mode">
+                        <div class="val" id="nora-mode">Frontfag</div>
+                        <div class="lbl">Modus</div>
                     </div>
                     <p class="nora-status" id="nora-status">FASTLANDSLIKEVEKT — NORA-STRUKTUR STABIL</p>
                 </div>
             </div>
 
             <aside class="nora-controls" aria-label="Styring av NORA-simulatoren">
+                <div class="nora-mode-toggle">
+                    <label class="nora-toggle">
+                        <input type="checkbox" id="nora-frontfag" checked>
+                        <span>Frontfagsmodell (lønnskurve · industri setter norm)</span>
+                    </label>
+                </div>
+                <fieldset class="nora-fieldset" id="nora-frontfag-fields">
+                    <legend>Frontfag / lønnsdannelse</legend>
+                    <div class="nora-control">
+                        <header>
+                            <label for="nora-wage-stick">ρ_W — Lønnsrighet</label>
+                            <span class="value" id="nora-wage-stick-val">75%</span>
+                        </header>
+                        <input type="range" id="nora-wage-stick" min="40" max="98" value="75">
+                    </div>
+                    <div class="nora-control">
+                        <header>
+                            <label for="nora-wage-shock">Z^V — Lønnssjokk</label>
+                            <span class="value" id="nora-wage-shock-val">0%</span>
+                        </header>
+                        <input type="range" id="nora-wage-shock" min="0" max="100" value="0">
+                    </div>
+                </fieldset>
                 <div class="nora-control">
                     <header>
                         <label for="nora-omega">ω — Likviditetsbegrensede</label>
