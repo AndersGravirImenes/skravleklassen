@@ -579,6 +579,24 @@
         .topic-card[data-accent="red"]  .btn { color: var(--neon-orange); border-color: var(--neon-orange); box-shadow: inset 0 0 12px rgba(255,92,0,0.08), 0 0 8px rgba(255,92,0,0.2); }
         .topic-card[data-accent="red"]  .btn:hover { background: var(--neon-orange); color: var(--bg-0); box-shadow: 0 0 20px var(--neon-orange); }
 
+        /* Crimson accent */
+        .topic-card[data-accent="crimson"] { border-color: rgba(255, 59, 48, 0.22); }
+        .topic-card[data-accent="crimson"]::before,
+        .topic-card[data-accent="crimson"]::after {
+            border-color: var(--neon-red);
+            box-shadow: 0 0 8px rgba(255, 59, 48, 0.5);
+        }
+        .topic-card[data-accent="crimson"]:hover {
+            border-color: rgba(255, 59, 48, 0.55);
+            box-shadow: 0 0 30px rgba(255, 59, 48, 0.3), inset 0 0 30px rgba(255, 59, 48, 0.05);
+        }
+        .topic-card[data-accent="crimson"] .topic-label { color: var(--neon-red); text-shadow: 0 0 6px rgba(255,59,48,0.4); }
+        .topic-card[data-accent="crimson"] .topic-episodes a { background: rgba(255,59,48,0.05); border-left-color: rgba(255,59,48,0.4); }
+        .topic-card[data-accent="crimson"] .topic-episodes a::before { color: var(--neon-red); }
+        .topic-card[data-accent="crimson"] .participant .avatar { color: var(--neon-red); border-color: rgba(255,59,48,0.5); box-shadow: 0 0 12px rgba(255,59,48,0.3), inset 0 0 10px rgba(255,59,48,0.1); }
+        .topic-card[data-accent="crimson"] .btn { color: var(--neon-red); border-color: var(--neon-red); box-shadow: inset 0 0 12px rgba(255,59,48,0.08), 0 0 8px rgba(255,59,48,0.2); }
+        .topic-card[data-accent="crimson"] .btn:hover { background: var(--neon-red); color: var(--bg-0); box-shadow: 0 0 20px var(--neon-red); }
+
         /* ===== Om ===== */
         .about-grid {
             display: grid;
@@ -842,18 +860,16 @@
             <div class="topics">
                 <article class="topic-card" data-accent="amber">
                     <p class="topic-id">// 01 — KAPITAL</p>
-                    <h3><span class="icon">💰</span> Økonomi &amp; politikk</h3>
+                    <h3><span class="icon">🏦</span> Pengepolitikk</h3>
                     <p class="topic-desc">
-                        Renter, NAIRU, frontfagsmodellen og bistand. Hvordan reagerer norske husholdninger
-                        på pengepolitikk — og hva styrer egentlig den norske økonomien?
+                        Renter, NAIRU og frontfagsmodellen. Når slutter styringsrenten å virke
+                        på norske husholdninger — og hva gjør Ida Wolden Bache da?
                     </p>
 
                     <p class="topic-label">› Episoder</p>
                     <ul class="topic-episodes">
                         <li><a href="https://podcasts.apple.com/no/podcast/skravleklassen/id1359266902" target="_blank" rel="noopener">Olav Slettebø forklarer NAIRU</a></li>
-                        <li><a href="https://podcasts.apple.com/no/podcast/skravleklassen/id1359266902" target="_blank" rel="noopener">Rentemysteriet med Martin Blomhoff Holm</a></li>
-                        <li><a href="https://podcasts.apple.com/no/podcast/skravleklassen/id1359266902" target="_blank" rel="noopener">Hallgeir Kvadsheim — Et liv i luksus</a></li>
-                        <li><a href="https://podcasts.apple.com/no/podcast/skravleklassen/id1359266902" target="_blank" rel="noopener">Eirik Mofoss — Effektiv bistand</a></li>
+                        <li><a href="https://podcasts.apple.com/no/podcast/skravleklassen/id1359266902" target="_blank" rel="noopener">Rentemysteriet — eksogene sjokk og vantro</a></li>
                     </ul>
 
                     <p class="topic-label">› Deltagere</p>
@@ -866,32 +882,24 @@
                             <div class="avatar"><img src="images/participants/martin-blomhoff-holm.jpg" alt="Martin Blomhoff Holm" onerror="this.style.display='none';this.parentElement.textContent='MH'"></div>
                             <span class="name">MARTIN B.<br>HOLM</span>
                         </div>
-                        <div class="participant">
-                            <div class="avatar"><img src="images/participants/hallgeir-kvadsheim.jpg" alt="Hallgeir Kvadsheim" onerror="this.style.display='none';this.parentElement.textContent='HK'"></div>
-                            <span class="name">HALLGEIR<br>KVADSHEIM</span>
-                        </div>
-                        <div class="participant">
-                            <div class="avatar"><img src="images/participants/eirik-mofoss.jpg" alt="Eirik Mofoss" onerror="this.style.display='none';this.parentElement.textContent='EM'"></div>
-                            <span class="name">EIRIK<br>MOFOSS</span>
-                        </div>
                     </div>
 
                     <div class="topic-actions">
-                        <button type="button" class="btn" onclick="openTopic('økonomi-politikk', 'Økonomi & politikk')">› Diskutér</button>
+                        <button type="button" class="btn" onclick="openTopic('pengepolitikk', 'Pengepolitikk')">› Diskutér</button>
                     </div>
                 </article>
 
                 <article class="topic-card" data-accent="pink">
-                    <p class="topic-id">// 02 — KOSMOS</p>
-                    <h3><span class="icon">⛪</span> Tro &amp; filosofi</h3>
+                    <p class="topic-id">// 02 — NÅDE</p>
+                    <h3><span class="icon">⛪</span> Sturla møter Jesus</h3>
                     <p class="topic-desc">
-                        Apokalypse, Pascals veddemål, Gud eller AI. Samtaler om tro, tvil og de store
-                        spørsmålene — fra hipsterprester til Sturlas eget åndelige veiskille.
+                        Endetid, Pascals veddemål og demonutdrivelse. Den evige slingringen
+                        mellom Filadelfia, Oxford og 12-trinns-modellen.
                     </p>
 
                     <p class="topic-label">› Episoder</p>
                     <ul class="topic-episodes">
-                        <li><a href="https://podcasts.apple.com/no/podcast/skravleklassen/id1359266902" target="_blank" rel="noopener">Endetiden (med Benjamin)</a></li>
+                        <li><a href="https://podcasts.apple.com/no/podcast/skravleklassen/id1359266902" target="_blank" rel="noopener">Endetiden (med hipsterpresten Benjamin)</a></li>
                         <li><a href="https://podcasts.apple.com/no/podcast/skravleklassen/id1359266902" target="_blank" rel="noopener">Gud eller AI?</a></li>
                     </ul>
 
@@ -908,16 +916,68 @@
                     </div>
 
                     <div class="topic-actions">
-                        <button type="button" class="btn" onclick="openTopic('tro-filosofi', 'Tro & filosofi')">› Diskutér</button>
+                        <button type="button" class="btn" onclick="openTopic('sturla-moter-jesus', 'Sturla møter Jesus')">› Diskutér</button>
+                    </div>
+                </article>
+
+                <article class="topic-card" data-accent="red">
+                    <p class="topic-id">// 03 — STATUS</p>
+                    <h3><span class="icon">💸</span> Monster &amp; minuskonto</h3>
+                    <p class="topic-desc">
+                        Luksusfellen, energidrikk-gjeld og merkeklær i barnehagen.
+                        Hvorfor de «nye rike» aldri klarer å si nei — og hva tatoveringen koster.
+                    </p>
+
+                    <p class="topic-label">› Episoder</p>
+                    <ul class="topic-episodes">
+                        <li><a href="https://podcasts.apple.com/no/podcast/skravleklassen/id1359266902" target="_blank" rel="noopener">Hallgeir Kvadsheim — Et liv i luksus</a></li>
+                    </ul>
+
+                    <p class="topic-label">› Deltagere</p>
+                    <div class="participants">
+                        <div class="participant">
+                            <div class="avatar"><img src="images/participants/hallgeir-kvadsheim.jpg" alt="Hallgeir Kvadsheim" onerror="this.style.display='none';this.parentElement.textContent='HK'"></div>
+                            <span class="name">HALLGEIR<br>KVADSHEIM</span>
+                        </div>
+                    </div>
+
+                    <div class="topic-actions">
+                        <button type="button" class="btn" onclick="openTopic('monster-minuskonto', 'Monster & minuskonto')">› Diskutér</button>
                     </div>
                 </article>
 
                 <article class="topic-card" data-accent="gold">
-                    <p class="topic-id">// 03 — PSYKE</p>
-                    <h3><span class="icon">🎨</span> Psyke &amp; kunst</h3>
+                    <p class="topic-id">// 04 — KARMA</p>
+                    <h3><span class="icon">🌍</span> Redd verden med regneark</h3>
                     <p class="topic-desc">
-                        Tilknytningsmønstre, slekt, og kunsten som språkløst savn.
-                        Om hvordan vi tiltrekkes det toksiske og hva masker skjuler.
+                        Effektiv altruisme, kontantoverføringer og longtermism. Når kald logikk
+                        er det varmeste vi har — og bistand handler om Excel, ikke gode hensikter.
+                    </p>
+
+                    <p class="topic-label">› Episoder</p>
+                    <ul class="topic-episodes">
+                        <li><a href="https://podcasts.apple.com/no/podcast/skravleklassen/id1359266902" target="_blank" rel="noopener">Eirik Mofoss — Effektiv bistand &amp; fremtidens etikk</a></li>
+                    </ul>
+
+                    <p class="topic-label">› Deltagere</p>
+                    <div class="participants">
+                        <div class="participant">
+                            <div class="avatar"><img src="images/participants/eirik-mofoss.jpg" alt="Eirik Mofoss" onerror="this.style.display='none';this.parentElement.textContent='EM'"></div>
+                            <span class="name">EIRIK<br>MOFOSS</span>
+                        </div>
+                    </div>
+
+                    <div class="topic-actions">
+                        <button type="button" class="btn" onclick="openTopic('redd-verden-med-regneark', 'Redd verden med regneark')">› Diskutér</button>
+                    </div>
+                </article>
+
+                <article class="topic-card" data-accent="crimson">
+                    <p class="topic-id">// 05 — SKYGGE</p>
+                    <h3><span class="icon">🎭</span> Den mørke triaden</h3>
+                    <p class="topic-desc">
+                        Tilknytningsmønstre, narsissister og familieskjeletter. Hvorfor empater
+                        jakter på det toksiske, og hva masken skjuler hos klassens klovn.
                     </p>
 
                     <p class="topic-label">› Episoder</p>
@@ -934,21 +994,21 @@
                     </div>
 
                     <div class="topic-actions">
-                        <button type="button" class="btn" onclick="openTopic('psyke-kunst', 'Psyke & kunst')">› Diskutér</button>
+                        <button type="button" class="btn" onclick="openTopic('mork-triaden', 'Den mørke triaden')">› Diskutér</button>
                     </div>
                 </article>
 
-                <article class="topic-card" data-accent="red">
-                    <p class="topic-id">// 04 — UTOPI</p>
-                    <h3><span class="icon">💊</span> Rus &amp; samfunn</h3>
+                <article class="topic-card" data-accent="pink">
+                    <p class="topic-id">// 06 — MIRAKEL</p>
+                    <h3><span class="icon">💊</span> Mellom metadon og mirakel</h3>
                     <p class="topic-desc">
-                        LAR-systemet, Evangeliesenteret og rusfeltets utvikling. Om sårbarhet,
-                        struktur og spørsmålet om ideologi som veien ut.
+                        LAR, Evangeliesenteret og rusfeltets paradokser. Trenger vi en ideologi —
+                        religiøs eller sekulær — for å bli rusfri på ekte?
                     </p>
 
                     <p class="topic-label">› Episoder</p>
                     <ul class="topic-episodes">
-                        <li><a href="https://podcasts.apple.com/no/podcast/skravleklassen/id1359266902" target="_blank" rel="noopener">Mellom nevrobiologi og miljøterapi (Helge Waal)</a></li>
+                        <li><a href="https://podcasts.apple.com/no/podcast/skravleklassen/id1359266902" target="_blank" rel="noopener">Helge Waal — Mellom nevrobiologi og miljøterapi</a></li>
                     </ul>
 
                     <p class="topic-label">› Deltagere</p>
@@ -960,7 +1020,7 @@
                     </div>
 
                     <div class="topic-actions">
-                        <button type="button" class="btn" onclick="openTopic('rus-samfunn', 'Rus & samfunn')">› Diskutér</button>
+                        <button type="button" class="btn" onclick="openTopic('metadon-og-mirakel', 'Mellom metadon og mirakel')">› Diskutér</button>
                     </div>
                 </article>
             </div>
