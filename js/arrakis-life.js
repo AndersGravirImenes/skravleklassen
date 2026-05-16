@@ -91,7 +91,6 @@ export function attachLivingWorld({ scene, nodes, reducedMotion }) {
     const orniTex = makeOrniTexture();
     const entities = [];
     const trails = [];
-    const worm = { segments: [], phase: 0 };
     let harvesterAtlas = null;
     let cameraYaw = 0;
 
@@ -152,21 +151,6 @@ export function attachLivingWorld({ scene, nodes, reducedMotion }) {
     scene.add(orni);
     entities.push({ kind: 'ornithopter', root: orni, phase: 0, speed: 0.08 });
 
-    for (let i = 0; i < 8; i++) {
-        const seg = new THREE.Mesh(
-            new THREE.SphereGeometry(0.28 + i * 0.05, 8, 8),
-            new THREE.MeshStandardMaterial({
-                color: 0x3d2818,
-                emissive: 0x5a3820,
-                emissiveIntensity: 0.3,
-                roughness: 0.95,
-            })
-        );
-        seg.visible = false;
-        scene.add(seg);
-        worm.segments.push(seg);
-    }
-
     const trailGeo = new THREE.SphereGeometry(0.04, 4, 4);
     const trailMat = new THREE.MeshBasicMaterial({
         color: SPICE_GLOW,
@@ -222,17 +206,6 @@ export function attachLivingWorld({ scene, nodes, reducedMotion }) {
             } else if (e.kind === 'ornithopter') {
                 e.root.visible = false;
             }
-        });
-
-        worm.phase = (worm.phase + dt * 0.15 * pump) % 1;
-        const wormActive = pump > 0.2;
-        worm.segments.forEach((seg, i) => {
-            seg.visible = wormActive;
-            if (!wormActive) return;
-            const t = (worm.phase + i * 0.08) % 1;
-            const wx = cx + (t - 0.5) * 14;
-            const wz = cz - 6 + t * 12;
-            seg.position.set(wx, -0.5 + Math.sin(t * Math.PI * 4) * 0.15, wz);
         });
 
         trails.forEach((t) => {

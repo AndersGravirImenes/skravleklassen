@@ -1085,6 +1085,13 @@
             filter: sepia(0.15) contrast(1.08) saturate(0.9);
         }
 
+        .moniac-control--pump .moniac-control-illus img {
+            object-fit: contain;
+            object-position: center;
+            max-height: 120px;
+            background: rgba(12, 8, 4, 0.6);
+        }
+
         .moniac-note {
             font-size: 0.92rem;
             color: var(--muted);
@@ -1124,7 +1131,8 @@
             }
 
             .moniac-control--gov,
-            .moniac-control--save {
+            .moniac-control--pump,
+            .moniac-control--tax {
                 grid-column: 1 / -1;
             }
         }
@@ -1646,7 +1654,7 @@
                 skattesats (<strong>t</strong>), MPC (<strong>c</strong>),
                 sparing til sietch (<strong>s</strong>) og importlekkasje (<strong>m</strong>) — egne glidere;
                 offentlig forbruk fra statskassen (<strong>G</strong>), investering fra banktank (<strong>I</strong>),
-                autonom eksport (<strong>X</strong>) via harvester/sandorm (<strong>P</strong>).
+                autonom eksport (<strong>X</strong>) via harvester (<strong>P</strong>).
                 Sub-tanker: statskasse (skatt <strong>t</strong>), sietch-bank (<strong>s</strong>), utland (<strong>m</strong>).
                 Likevekt når lekkasjer = injeksjoner: <strong>S + T + M = I + G + X</strong>
                 (eller <strong>Y = C + I + G + (X − M)</strong>).
@@ -1688,7 +1696,7 @@
                 <aside class="moniac-controls" aria-label="Styring av spice-økonomien">
                     <div class="moniac-control moniac-control--gov">
                         <figure class="moniac-control-illus">
-                            <img src="images/moniac/emperor.webp" alt="Keiseren — illustrasjon til offentlig forbruk (G)" width="320" height="180" loading="lazy" decoding="async">
+                            <img src="images/moniac/silo.jpg" alt="Spice-silo — illustrasjon til offentlig forbruk (G)" width="320" height="180" loading="lazy" decoding="async">
                         </figure>
                         <header>
                             <label for="moniac-gov">G — Offentlig forbruk</label>
@@ -1696,14 +1704,20 @@
                         </header>
                         <input type="range" id="moniac-gov" min="5" max="80" value="35" aria-valuemin="5" aria-valuemax="80">
                     </div>
-                    <div class="moniac-control">
+                    <div class="moniac-control moniac-control--pump">
+                        <figure class="moniac-control-illus">
+                            <img src="images/moniac/harvester-long.webp" alt="Spice harvester (P)" width="640" height="180" loading="lazy" decoding="async">
+                        </figure>
                         <header>
-                            <label for="moniac-rate">P — Harvester / sandorm</label>
+                            <label for="moniac-rate">P</label>
                             <span class="value" id="moniac-rate-val">4.5%</span>
                         </header>
                         <input type="range" id="moniac-rate" min="0" max="9" step="0.5" value="4.5" aria-valuemin="0" aria-valuemax="9">
                     </div>
-                    <div class="moniac-control">
+                    <div class="moniac-control moniac-control--tax">
+                        <figure class="moniac-control-illus">
+                            <img src="images/moniac/emperor.webp" alt="Keiseren — illustrasjon til skattesats (t)" width="320" height="180" loading="lazy" decoding="async">
+                        </figure>
                         <header>
                             <label for="moniac-tax">t — Skattesats</label>
                             <span class="value" id="moniac-tax-val">28%</span>
@@ -1717,10 +1731,7 @@
                         </header>
                         <input type="range" id="moniac-mpc" min="20" max="85" value="48" aria-valuemin="20" aria-valuemax="85">
                     </div>
-                    <div class="moniac-control moniac-control--save">
-                        <figure class="moniac-control-illus">
-                            <img src="images/moniac/silo.jpg" alt="Spice-silo — illustrasjon til sparing s i sietch" width="320" height="180" loading="lazy" decoding="async">
-                        </figure>
+                    <div class="moniac-control">
                         <header>
                             <label for="moniac-save">s — Sparerate (sietch)</label>
                             <span class="value" id="moniac-save-val">12%</span>

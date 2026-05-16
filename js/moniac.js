@@ -29,7 +29,7 @@ const COLORS = {
 };
 
 const NODE_DEFS = [
-    { id: 'P', label: 'P', sub: 'HARVESTER · SANDORM', pos: [-5.2, 0, 0], color: COLORS.pump, type: 'pump' },
+    { id: 'P', label: 'P', sub: 'HARVESTER', pos: [-5.2, 0, 0], color: COLORS.pump, type: 'pump' },
     { id: 'G', label: 'G', sub: 'OFFENTLIG FORBRUK', pos: [-3.4, 0, -2.6], color: COLORS.gov, type: 'imperial' },
     { id: 'C', label: 'C', sub: 'MPC', pos: [-3.4, 0, 2.6], color: COLORS.consume, type: 'guild' },
     { id: 'Y', label: 'Y', sub: 'TOTAL SPICE-HØST', pos: [0, 0, 0], color: COLORS.income, type: 'silo', hub: true },
@@ -79,7 +79,7 @@ const MACRO = {
     FLOW_GAIN: 2.8,
 };
 
-/** Autonom injeksjon X fra harvester/sandorm (P) */
+/** Autonom injeksjon X fra harvester (P) */
 function exportFromRate(rate) {
     return MACRO.X_BASE + rate * MACRO.X_RATE_SCALE;
 }
@@ -393,6 +393,24 @@ function initMoniac() {
                 );
                 spire.position.y = 1.6;
                 group.add(spire);
+                const portraitH = 1.55;
+                new THREE.TextureLoader().load(
+                    'images/moniac/emperor.webp',
+                    (tex) => {
+                        tex.colorSpace = THREE.SRGBColorSpace;
+                        const aspect = tex.image.width / Math.max(1, tex.image.height);
+                        const frame = new THREE.Mesh(
+                            new THREE.PlaneGeometry(aspect * portraitH, portraitH),
+                            new THREE.MeshBasicMaterial({
+                                map: tex,
+                                transparent: true,
+                                depthWrite: false,
+                            })
+                        );
+                        frame.position.set(0.85, portraitH / 2 + 0.2, 0.35);
+                        group.add(frame);
+                    }
+                );
                 fill = createFill(def.color, 0.35, 1.2);
                 fill.position.y = 0.5;
                 portY = 0.5;
@@ -418,8 +436,23 @@ function initMoniac() {
                 break;
             }
             case 'sietch': {
+                const dome = new THREE.Mesh(
+                    new THREE.SphereGeometry(1.1, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2),
+                    new THREE.MeshStandardMaterial({ color: SIETCH, roughness: 0.85 })
+                );
+                dome.position.y = -0.15;
+                group.add(dome);
                 const mound = new THREE.Mesh(new THREE.ConeGeometry(1.5, 0.5, 12), sandMat);
                 mound.position.y = -0.35;
+                group.add(mound);
+                fill = createFill(def.color, 0.7, 0.6);
+                fill.position.y = 0.1;
+                portY = 0.5;
+                break;
+            }
+            case 'imperial': {
+                const mound = new THREE.Mesh(new THREE.ConeGeometry(1.4, 0.45, 12), sandMat);
+                mound.position.y = -0.32;
                 group.add(mound);
                 const siloH = 1.65;
                 new THREE.TextureLoader().load(
@@ -439,36 +472,6 @@ function initMoniac() {
                         group.add(silo);
                     }
                 );
-                fill = createFill(def.color, 0.7, 0.6);
-                fill.position.y = 0.1;
-                portY = 0.5;
-                break;
-            }
-            case 'imperial': {
-                const portraitH = 1.55;
-                new THREE.TextureLoader().load(
-                    'images/moniac/emperor.webp',
-                    (tex) => {
-                        tex.colorSpace = THREE.SRGBColorSpace;
-                        const aspect = tex.image.width / Math.max(1, tex.image.height);
-                        const frame = new THREE.Mesh(
-                            new THREE.PlaneGeometry(aspect * portraitH, portraitH),
-                            new THREE.MeshBasicMaterial({
-                                map: tex,
-                                transparent: true,
-                                depthWrite: false,
-                            })
-                        );
-                        frame.position.set(0, portraitH / 2 + 0.15, 0.5);
-                        group.add(frame);
-                    }
-                );
-                const plinth = new THREE.Mesh(
-                    new THREE.BoxGeometry(1.35, 0.35, 0.85),
-                    new THREE.MeshStandardMaterial({ color: IMPERIAL, roughness: 0.75, metalness: 0.2 })
-                );
-                plinth.position.y = 0.18;
-                group.add(plinth);
                 fill = createFill(def.color, 0.45, 0.7);
                 fill.position.y = 0.25;
                 portY = 0.6;
@@ -497,19 +500,27 @@ function initMoniac() {
             }
             case 'pump': {
                 pumpGroup = group;
-                const harv = new THREE.Mesh(
-                    new THREE.BoxGeometry(1.4, 0.5, 0.9),
-                    new THREE.MeshStandardMaterial({ color: 0x4a4035, metalness: 0.55 })
+                const mound = new THREE.Mesh(new THREE.ConeGeometry(1.6, 0.4, 12), sandMat);
+                mound.position.y = -0.3;
+                group.add(mound);
+                const harvH = 1.1;
+                new THREE.TextureLoader().load(
+                    'images/moniac/harvester-long.webp',
+                    (tex) => {
+                        tex.colorSpace = THREE.SRGBColorSpace;
+                        const aspect = tex.image.width / Math.max(1, tex.image.height);
+                        const harv = new THREE.Mesh(
+                            new THREE.PlaneGeometry(aspect * harvH, harvH),
+                            new THREE.MeshBasicMaterial({
+                                map: tex,
+                                transparent: true,
+                                depthWrite: false,
+                            })
+                        );
+                        harv.position.set(0, harvH / 2 + 0.15, 0.55);
+                        group.add(harv);
+                    }
                 );
-                harv.position.y = 0.35;
-                group.add(harv);
-                const pipe = new THREE.Mesh(
-                    new THREE.CylinderGeometry(0.08, 0.08, 1.2, 8),
-                    new THREE.MeshStandardMaterial({ color: 0x6a5a48, metalness: 0.7 })
-                );
-                pipe.rotation.z = Math.PI / 2;
-                pipe.position.set(0.6, 0.55, 0);
-                group.add(pipe);
                 fill = createFill(SPICE_BRIGHT, 0.35, 0.4);
                 fill.position.set(0.3, 0.5, 0);
                 portY = 0.5;
