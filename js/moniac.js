@@ -264,6 +264,8 @@ function initMoniac() {
     let pumpGroup;
     let livingWorld = null;
     let running = true;
+    let userPaused = false;
+    let panelVisible = false;
     let reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     const scene = new THREE.Scene();
@@ -873,6 +875,26 @@ function initMoniac() {
         el?.addEventListener('input', () => onControlInput());
     });
 
+    const pauseBtn = document.getElementById('moniac-pause');
+
+    function stopLoop() {
+        running = false;
+        cancelAnimationFrame(animId);
+    }
+
+    function startLoop() {
+        if (userPaused || !panelVisible || reducedMotion) return;
+        running = true;
+        last = performance.now();
+        animate(last);
+    }
+
+    function setPauseLabel() {
+        if (pauseBtn) {
+            pauseBtn.textContent = userPaused ? '› Fortsett' : '› Pause / fortsett';
+        }
+    }
+
     document.getElementById('moniac-reset')?.addEventListener('click', () => {
         controls.gov.value = 35;
         controls.rate.value = 4.5;
@@ -889,21 +911,27 @@ function initMoniac() {
         flowParticles.forEach((p) => scene.remove(p.mesh));
         flowParticles = [];
         updateLabels(c0);
-        if (reducedMotion) renderStill();
+        if (reducedMotion || userPaused) renderStill();
+    });
+
+    pauseBtn?.addEventListener('click', () => {
+        userPaused = !userPaused;
+        setPauseLabel();
+        if (userPaused) {
+            stopLoop();
+            renderStill();
+        } else {
+            startLoop();
+        }
     });
 
     const observer = new IntersectionObserver((entries) => {
-        const visible = entries[0]?.isIntersecting;
-        if (visible && !running) {
-            running = true;
+        panelVisible = !!entries[0]?.isIntersecting;
+        if (panelVisible && !userPaused) {
             if (reducedMotion) renderStill();
-            else {
-                last = performance.now();
-                animate(last);
-            }
-        } else if (!visible) {
-            running = false;
-            cancelAnimationFrame(animId);
+            else startLoop();
+        } else if (!panelVisible) {
+            stopLoop();
         }
     }, { threshold: 0.1 });
     observer.observe(panel);
@@ -911,11 +939,9 @@ function initMoniac() {
     syncPrivateSliders('mpc');
     resize();
     updateLabels(readControls());
+    setPauseLabel();
     if (reducedMotion) renderStill();
-    else {
-        running = true;
-        animate(performance.now());
-    }
+    else startLoop();
 
     let resizeTO;
     window.addEventListener('resize', () => {
