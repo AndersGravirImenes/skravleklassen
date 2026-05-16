@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#060e16">
+    <title>NORA — norsk fastlandsøkonomi | Skravleklassen</title>
+    <meta name="description" content="Interaktiv pedagogisk forkortelse av SSBs NORA-modell (NOT 2024/4) for norsk finanspolitikk og fastlandsøkonomi.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800;900&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/nora.css">
+</head>
+<body>
+    <nav class="nora-nav" aria-label="NORA-navigasjon">
+        <div class="nora-nav-inner">
+            <a href="index.html" class="nora-logo">NORA · SSB</a>
+            <ul class="nora-nav-links">
+                <li><a href="index.html">Skravleklassen</a></li>
+                <li><a href="Nora/NOT2024-04.pdf" target="_blank" rel="noopener">NOT 2024/4 ↗</a></li>
+                <li><a href="#sim" aria-current="page">Simulator</a></li>
+            </ul>
+            <a href="index.html" class="nora-nav-back">← Tilbake til podkast</a>
+        </div>
+    </nav>
+
+    <header class="nora-hero">
+        <p class="tag">Documents 2024/4 · Statistisk sentralbyrå</p>
+        <h1>Norsk økonomi — NORA</h1>
+        <p class="tag">Mikrofundert DSGE for finanspolitikk · fastlands-Norge</p>
+    </header>
+
+    <main id="nora">
+        <div class="section-label" id="sim">01 // SIMULATOR</div>
+        <p class="nora-note">
+            <strong>NORA</strong> er en mikrofundert DSGE-modell for norsk finanspolitikk, utviklet ved
+            <strong>Statistisk sentralbyrå (SSB)</strong> (Gundersen, Quaghebeur og Tretvoll, NOT 2024/4).
+            Modellen beskriver en <strong>liten åpen økonomi</strong> med sterke handels- og finanskoblinger
+            til utlandet, men fokuserer på <strong>fastlands-Norge</strong> — oljeproduksjon og
+            petroleumsbeskatning modelleres ikke direkte på fastlandet; oljesektorets etterspørsel etter
+            innenlandske investeringsvarer er en viktig kobling. Petroleumsskatt overføres til
+            <strong>GPFG</strong>; uttak fra fondet finansierer offentlig forbruk sammen med skatter.
+            Husholdninger: andel <strong>ω</strong> likviditetsbegrensede (forbruker inntekt netto skatt)
+            og <strong>1−ω</strong> Ricardianske (glatter forbruk via innskudd og aksjer).
+            Aggregert forbruk <strong>C<sub>t</sub> = ωC<sup>L</sup><sub>t</sub> + (1−ω)C<sup>R</sup><sub>t</sub></strong> (likn. 2.10).
+            Lønnsdannelse følger <strong>frontfags-/lønnskurve</strong>-logikk; sentralbanken setter
+            nominell rente med en <strong>Taylor-regel</strong> (likn. 2.51, ψ<sub>π</sub>≈1,6, ψ<sub>Y</sub>≈0,12).
+            Simulatoren er en pedagogisk forkortelse — ikke offisiell NORA-kode.
+            <a href="Nora/NOT2024-04.pdf" target="_blank" rel="noopener">NOT 2024/4 (PDF) ↗</a>
+        </p>
+
+        <div class="nora-wrap">
+            <div class="nora-panel">
+                <span class="nora-watermark">FASTLAND · FIG. 2.1</span>
+                <div class="nora-diagram-host" id="nora-diagram"></div>
+                <div class="nora-chart-wrap">
+                    <canvas id="nora-canvas" aria-label="Tidsserie: output gap, inflasjon og aggregert forbruk"></canvas>
+                </div>
+                <div class="nora-hud" aria-live="polite">
+                    <div class="nora-readout">
+                        <div class="val" id="nora-y">0.0%</div>
+                        <div class="lbl">Output gap (Y/Ỹ)</div>
+                    </div>
+                    <div class="nora-readout">
+                        <div class="val" id="nora-pi">2.00%</div>
+                        <div class="lbl">Inflasjon (π)</div>
+                    </div>
+                    <div class="nora-readout">
+                        <div class="val" id="nora-c">—</div>
+                        <div class="lbl">Agg. C</div>
+                    </div>
+                    <div class="nora-readout">
+                        <div class="val" id="nora-u">3.8%</div>
+                        <div class="lbl">Ledighet (U)</div>
+                    </div>
+                    <p class="nora-status" id="nora-status">FASTLANDSLIKEVEKT — NORA-STRUKTUR STABIL</p>
+                </div>
+            </div>
+
+            <aside class="nora-controls" aria-label="Styring av NORA-simulatoren">
+                <div class="nora-control">
+                    <header>
+                        <label for="nora-omega">ω — Likviditetsbegrensede</label>
+                        <span class="value" id="nora-omega-val">38%</span>
+                    </header>
+                    <input type="range" id="nora-omega" min="15" max="70" value="38">
+                </div>
+                <div class="nora-control">
+                    <header>
+                        <label for="nora-rate">R — Styringsrente (Taylor)</label>
+                        <span class="value" id="nora-rate-val">4.5%</span>
+                    </header>
+                    <input type="range" id="nora-rate" min="0" max="90" step="5" value="45">
+                </div>
+                <div class="nora-control">
+                    <header>
+                        <label for="nora-pi-target">π* — Inflasjonsmål</label>
+                        <span class="value" id="nora-pi-target-val">2.0%</span>
+                    </header>
+                    <input type="range" id="nora-pi-target" min="0" max="50" step="5" value="20">
+                </div>
+                <div class="nora-control">
+                    <header>
+                        <label for="nora-g">G — Offentlig forbruk</label>
+                        <span class="value" id="nora-g-val">22%</span>
+                    </header>
+                    <input type="range" id="nora-g" min="10" max="45" value="22">
+                </div>
+                <div class="nora-control">
+                    <header>
+                        <label for="nora-i">I off — Offentlig investering</label>
+                        <span class="value" id="nora-i-val">12%</span>
+                    </header>
+                    <input type="range" id="nora-i" min="5" max="30" value="12">
+                </div>
+                <div class="nora-control">
+                    <header>
+                        <label for="nora-oil">Olje-I til fastland</label>
+                        <span class="value" id="nora-oil-val">50%</span>
+                    </header>
+                    <input type="range" id="nora-oil" min="0" max="100" value="50">
+                </div>
+                <div class="nora-control">
+                    <header>
+                        <label for="nora-gpfg">GPFG — uttak til budsjett</label>
+                        <span class="value" id="nora-gpfg-val">35%</span>
+                    </header>
+                    <input type="range" id="nora-gpfg" min="0" max="80" value="35">
+                </div>
+                <div class="nora-control">
+                    <header>
+                        <label for="nora-fiscal">Fiskalt sjokk (Z^G)</label>
+                        <span class="value" id="nora-fiscal-val">0%</span>
+                    </header>
+                    <input type="range" id="nora-fiscal" min="0" max="100" value="0">
+                </div>
+                <div class="nora-control">
+                    <header>
+                        <label for="nora-foreign">Risikopremie utland (RP)</label>
+                        <span class="value" id="nora-foreign-val">25%</span>
+                    </header>
+                    <input type="range" id="nora-foreign" min="0" max="80" value="25">
+                </div>
+                <div class="nora-actions">
+                    <button type="button" class="btn" id="nora-reset">› Nullstill modell</button>
+                    <button type="button" class="btn" id="nora-pause">› Pause / fortsett</button>
+                </div>
+            </aside>
+        </div>
+    </main>
+
+    <footer class="nora-footer">
+        <p>Pedagogisk modell · <a href="index.html">Skravleklassen</a> · Kilde: <a href="Nora/NOT2024-04.pdf">SSB NOT 2024/4</a></p>
+    </footer>
+
+    <script type="module" src="js/nora.js"></script>
+</body>
+</html>
