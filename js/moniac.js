@@ -1,5 +1,5 @@
 /**
- * MONIAC 3D — Phillips-maskin i Blade Runner 2049-estetikk
+ * MONIAC 3D — Spice-økonomi på Arrakis (Dune-estetikk)
  */
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -8,25 +8,37 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 
+const SPICE = 0xe8923a;
+const SPICE_BRIGHT = 0xffc04d;
+const SAND = 0xc9a86c;
+const SAND_SHADOW = 0x7a5c2e;
+const CHOAM = 0xd4af37;
+const GUILD = 0x5eb8e8;
+const IMPERIAL = 0x9c3b28;
+const SIETCH = 0x6b8f7a;
+
 const COLORS = {
-    income: 0xff9a3c,
-    consume: 0xff4d8b,
-    tax: 0xff5c00,
-    save: 0xc8a890,
-    gov: 0xffc857,
-    invest: 0xffb347,
+    income: SPICE,
+    consume: GUILD,
+    tax: CHOAM,
+    save: SIETCH,
+    gov: IMPERIAL,
+    invest: 0xb8860b,
+    pump: SPICE_BRIGHT,
 };
 
-const TANK_DEFS = [
-    { id: 'G', label: 'G', sub: 'OFFENTLIG', pos: [-3.2, 0, -2.4], color: COLORS.gov },
-    { id: 'C', label: 'C', sub: 'FORBRUK', pos: [-3.2, 0, 2.4], color: COLORS.consume },
-    { id: 'Y', label: 'Y', sub: 'NASJONALINNTEKT', pos: [0, 0, 0], color: COLORS.income, hub: true },
-    { id: 'T', label: 'T', sub: 'SKATT', pos: [3.2, 0, -2.4], color: COLORS.tax },
-    { id: 'I', label: 'I', sub: 'INVESTERING', pos: [3.2, 0, 0], color: COLORS.invest },
-    { id: 'S', label: 'S', sub: 'SPARING', pos: [3.2, 0, 2.4], color: COLORS.save },
+const NODE_DEFS = [
+    { id: 'P', label: 'P', sub: 'HARVESTER · SANDORM', pos: [-5.2, 0, 0], color: COLORS.pump, type: 'pump' },
+    { id: 'G', label: 'G', sub: 'SARDAUKAR · HOFF', pos: [-3.4, 0, -2.6], color: COLORS.gov, type: 'imperial' },
+    { id: 'C', label: 'C', sub: 'GILDE · MENTAT · STILL', pos: [-3.4, 0, 2.6], color: COLORS.consume, type: 'guild' },
+    { id: 'Y', label: 'Y', sub: 'TOTAL SPICE-HØST', pos: [0, 0, 0], color: COLORS.income, type: 'silo', hub: true },
+    { id: 'T', label: 'T', sub: 'CHOAM → KEISER', pos: [3.4, 0, -2.6], color: COLORS.tax, type: 'choam' },
+    { id: 'I', label: 'I', sub: 'HARVESTER · ORNITHOPTER', pos: [3.4, 0, 0.2], color: COLORS.invest, type: 'factory' },
+    { id: 'S', label: 'S', sub: 'SIETCH · HUS-SKATT', pos: [3.4, 0, 2.6], color: COLORS.save, type: 'sietch' },
 ];
 
 const PIPES = [
+    { from: 'P', to: 'Y', color: COLORS.pump },
     { from: 'G', to: 'Y', color: COLORS.gov },
     { from: 'I', to: 'Y', color: COLORS.invest },
     { from: 'Y', to: 'C', color: COLORS.consume },
@@ -35,6 +47,81 @@ const PIPES = [
     { from: 'C', to: 'Y', color: COLORS.consume },
 ];
 
+const NODE_PORTS = {
+    P: { out: [0.9, 0.2, 0] },
+    G: { out: [0.7, 0.3, 0], in: [-0.7, 0.2, 0] },
+    C: { out: [0.6, 0.1, 0], in: [-0.6, 0.4, 0] },
+    Y: { inL: [-1.1, 0.3, 0], inR: [1.1, 0.3, 0], inB: [0, -0.5, 0], outL: [-1.1, 0.8, 0], outT: [0, 1.4, 0], outR: [1.1, 0.8, 0] },
+    T: { in: [0, -0.8, 0] },
+    I: { out: [-0.7, 0.2, 0], in: [0.7, 0.2, 0] },
+    S: { in: [0, 0.6, 0] },
+};
+
+const MACRO = {
+    Y_POT: 0.92,
+    NAIRU: 0.042,
+    MPI: 0.22,
+    X_AUTO: 0.1,
+    G_SCALE: 0.22,
+    I_BASE: 0.14,
+    R_NEUTRAL: 0.025,
+    R_SENS: 1.6,
+    I_FLOOR: 0.25,
+    PI_TARGET: 2.0,
+    OKUN_COEF: 7.5,
+    PHILLIPS_COEF: 9,
+    FISCAL_INFL_COEF: 5,
+};
+
+function harvestFromRate(rate) {
+    return MACRO.X_AUTO * (0.45 + rate * 9.5);
+}
+
+function macroEquilibrium(c) {
+    const t = c.tax;
+    const mpc = c.mpc;
+    const G = c.gov * MACRO.G_SCALE;
+    const rateGap = Math.max(0, c.rate - MACRO.R_NEUTRAL);
+    const I = MACRO.I_BASE * Math.max(MACRO.I_FLOOR, 1 - MACRO.R_SENS * rateGap);
+    const X = harvestFromRate(c.rate);
+    const A = G + I + X;
+    const denom = 1 - mpc * (1 - t) + MACRO.MPI;
+    const mult = denom > 0.08 ? 1 / denom : 12;
+    const Y = Math.min(0.98, A * mult);
+    return { G, I, X, A, mult, denom, Y, t, mpc };
+}
+
+function macroFlows(Y, eq) {
+    const { mpc, t } = eq;
+    const C = mpc * (1 - t) * Y;
+    const T_flow = t * Y;
+    const S_flow = (1 - mpc) * Y;
+    const M_flow = MACRO.MPI * Y;
+    return { C, T_flow, S_flow, M_flow, G: eq.G, I: eq.I };
+}
+
+function macroUnemployment(Y) {
+    const gap = Math.max(0, (MACRO.Y_POT - Y) / MACRO.Y_POT);
+    return MACRO.NAIRU * 100 + gap * MACRO.OKUN_COEF;
+}
+
+function macroInflation(Y, G) {
+    const outputGap = (Y - MACRO.Y_POT) / MACRO.Y_POT;
+    const demandPull = MACRO.PHILLIPS_COEF * outputGap;
+    const fiscal = MACRO.FISCAL_INFL_COEF * Math.max(0, G - 0.07);
+    return Math.max(0, MACRO.PI_TARGET + demandPull + fiscal);
+}
+
+function macroStatus(Y, eq, uPct) {
+    const gap = (Y - MACRO.Y_POT) / MACRO.Y_POT;
+    const rateGap = Math.max(0, eq.rate - MACRO.R_NEUTRAL);
+    if (gap > 0.06) return 'SPICE-TSUNAMI — ØKOLOGISK GRENS';
+    if (Y < 0.32) return 'TØRKE — HARVESTER STANSET';
+    if (rateGap > 0.03 && eq.I < MACRO.I_BASE * 0.55) return 'SANDORM UROLIG — INVESTERING BREMSES';
+    if (uPct > MACRO.NAIRU * 100 + 2.5) return 'SIETCH-TAPT KAPASITET';
+    return 'BALANSERT SPICE-SIRKULASJON';
+}
+
 function initMoniac() {
     const canvas = document.getElementById('moniac-canvas');
     const panel = document.getElementById('moniac');
@@ -42,6 +129,7 @@ function initMoniac() {
 
     const hud = {
         bnp: document.getElementById('moniac-bnp'),
+        mult: document.getElementById('moniac-mult'),
         ledighet: document.getElementById('moniac-ledighet'),
         inflasjon: document.getElementById('moniac-inflasjon'),
         status: document.getElementById('moniac-status'),
@@ -61,330 +149,347 @@ function initMoniac() {
         mpc: document.getElementById('moniac-mpc-val'),
     };
 
-    const state = { Y: 0.42, C: 0.3, T: 0.18, S: 0.15, G: 0.2, I: 0.22 };
-    const tanks = {};
+    const _initC = { gov: 0.35, rate: 0.045, tax: 0.28, mpc: 0.72 };
+    const _initEq = macroEquilibrium(_initC);
+    const _initF = macroFlows(_initEq.Y * 0.95, _initEq);
+    const state = {
+        Y: _initEq.Y * 0.95,
+        C: _initF.C,
+        T: _initF.T_flow,
+        S: _initF.S_flow,
+        G: 0.35,
+        I: _initEq.I / MACRO.I_BASE,
+        P: 0.5,
+    };
+
+    const nodes = {};
     const pipeMeshes = [];
     let flowParticles = [];
     let dustParticles;
+    let pumpGroup;
+    let wormSegments = [];
     let running = true;
     let reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0a0604);
-    scene.fog = new THREE.FogExp2(0x1a0c08, 0.045);
+    scene.background = new THREE.Color(0x3d2814);
+    scene.fog = new THREE.FogExp2(0xc9a070, 0.028);
 
-    const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 80);
-    camera.position.set(7.5, 5.2, 9.5);
+    const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 120);
+    camera.position.set(8, 6, 11);
 
-    const renderer = new THREE.WebGLRenderer({
-        canvas,
-        antialias: true,
-        alpha: false,
-        powerPreference: 'high-performance',
-    });
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, reducedMotion ? 1 : 2));
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.25;
+    renderer.toneMappingExposure = 1.1;
     renderer.shadowMap.enabled = !reducedMotion;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     let composer = null;
     let bloomPass = null;
     if (!reducedMotion) {
         composer = new EffectComposer(renderer);
         composer.addPass(new RenderPass(scene, camera));
-        bloomPass = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.62, 0.42, 0.18);
+        bloomPass = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.75, 0.5, 0.22);
         composer.addPass(bloomPass);
     }
 
     const labelRenderer = new CSS2DRenderer();
-    labelRenderer.domElement.style.position = 'absolute';
-    labelRenderer.domElement.style.inset = '0';
-    labelRenderer.domElement.style.pointerEvents = 'none';
+    labelRenderer.domElement.style.cssText = 'position:absolute;inset:0;pointer-events:none';
     canvas.parentElement.appendChild(labelRenderer.domElement);
 
     const orbit = new OrbitControls(camera, canvas);
     orbit.enableDamping = true;
-    orbit.dampingFactor = 0.06;
-    orbit.minDistance = 6;
-    orbit.maxDistance = 18;
-    orbit.maxPolarAngle = Math.PI / 2.05;
-    orbit.target.set(0, 0.8, 0);
+    orbit.target.set(0, 0.6, 0);
+    orbit.minDistance = 7;
+    orbit.maxDistance = 22;
+    orbit.maxPolarAngle = Math.PI / 2.1;
     orbit.autoRotate = !reducedMotion;
-    orbit.autoRotateSpeed = 0.35;
+    orbit.autoRotateSpeed = 0.28;
 
-    // —— Lighting (Las Vegas orange haze) ——
-    scene.add(new THREE.AmbientLight(0xffc4a0, 0.25));
-    const keyLight = new THREE.DirectionalLight(0xff9a3c, 1.1);
-    keyLight.position.set(5, 12, 4);
-    keyLight.castShadow = true;
-    keyLight.shadow.mapSize.set(1024, 1024);
-    scene.add(keyLight);
+    scene.add(new THREE.HemisphereLight(0xffe4b8, 0x4a3520, 0.55));
+    const sun = new THREE.DirectionalLight(0xffd4a0, 1.35);
+    sun.position.set(8, 14, 6);
+    sun.castShadow = !reducedMotion;
+    scene.add(sun);
 
-    const rimPink = new THREE.PointLight(0xff4d8b, 2.2, 22);
-    rimPink.position.set(-6, 3, 4);
-    scene.add(rimPink);
+    const spiceLight = new THREE.PointLight(SPICE_BRIGHT, 2, 14);
+    spiceLight.position.set(0, 2.5, 0);
+    scene.add(spiceLight);
 
-    const rimAmber = new THREE.PointLight(0xff5c00, 1.8, 20);
-    rimAmber.position.set(6, 2, -5);
-    scene.add(rimAmber);
+    const sandMat = new THREE.MeshStandardMaterial({ color: SAND, roughness: 0.95, metalness: 0.02 });
+    const sandDarkMat = new THREE.MeshStandardMaterial({ color: SAND_SHADOW, roughness: 1, metalness: 0 });
 
-    const hubGlow = new THREE.PointLight(0xff9a3c, 1.4, 8);
-    hubGlow.position.set(0, 1.5, 0);
-    scene.add(hubGlow);
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(48, 48, 1, 1), sandDarkMat);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -1.2;
+    ground.receiveShadow = true;
+    scene.add(ground);
 
-    // —— Floor grid (2049 wasteland platform) ——
-    const floorGeo = new THREE.PlaneGeometry(24, 24, 24, 24);
-    const floorMat = new THREE.MeshStandardMaterial({
-        color: 0x160c08,
-        metalness: 0.85,
-        roughness: 0.35,
-        emissive: 0xff5c00,
-        emissiveIntensity: 0.04,
+    [[-12, -8, 4], [10, -10, 5], [-8, 11, 3.5], [14, 6, 4.5], [-14, 4, 3], [6, -14, 3.8]].forEach(([x, z, s]) => {
+        const dune = new THREE.Mesh(new THREE.ConeGeometry(s * 1.4, s * 0.55, 12), sandMat);
+        dune.position.set(x, -1.2 + s * 0.12, z);
+        dune.rotation.y = Math.random() * Math.PI;
+        scene.add(dune);
     });
-    const floor = new THREE.Mesh(floorGeo, floorMat);
-    floor.rotation.x = -Math.PI / 2;
-    floor.position.y = -1.35;
-    floor.receiveShadow = true;
-    scene.add(floor);
 
-    const grid = new THREE.GridHelper(22, 44, 0xff9a3c, 0x3d2018);
-    grid.position.y = -1.34;
-    grid.material.opacity = 0.35;
-    grid.material.transparent = true;
-    scene.add(grid);
+    const rockMat = new THREE.MeshStandardMaterial({ color: 0x5c4a32, roughness: 0.9 });
+    for (let i = 0; i < 14; i++) {
+        const r = new THREE.Mesh(new THREE.DodecahedronGeometry(0.2 + Math.random() * 0.35, 0), rockMat);
+        r.position.set((Math.random() - 0.5) * 20, -1.05, (Math.random() - 0.5) * 20);
+        scene.add(r);
+    }
 
-    const pedestal = new THREE.Mesh(
-        new THREE.CylinderGeometry(4.2, 4.6, 0.35, 6),
-        new THREE.MeshStandardMaterial({
-            color: 0x25140e,
-            metalness: 0.7,
-            roughness: 0.4,
-            emissive: 0xff5c00,
-            emissiveIntensity: 0.06,
-        })
-    );
-    pedestal.position.y = -1.15;
-    pedestal.receiveShadow = true;
-    scene.add(pedestal);
+    const FILL_H = 2.4;
 
-    // —— Tanks ——
-    const TANK_W = 1.15;
-    const TANK_H = 2.2;
-    const TANK_D = 1.15;
+    function addLabel(group, def, yOff) {
+        const el = document.createElement('div');
+        el.className = 'moniac-label';
+        el.innerHTML = `${def.label}<small>${def.sub}</small>`;
+        const obj = new CSS2DObject(el);
+        obj.position.set(0, yOff, 0);
+        group.add(obj);
+    }
 
-    function createTank(def) {
+    function createFill(color, radius, height) {
+        const m = new THREE.Mesh(
+            new THREE.CylinderGeometry(radius * 0.88, radius * 0.92, 0.08, 16),
+            new THREE.MeshStandardMaterial({
+                color,
+                emissive: color,
+                emissiveIntensity: 0.65,
+                transparent: true,
+                opacity: 0.9,
+            })
+        );
+        return m;
+    }
+
+    function createNode(def) {
         const group = new THREE.Group();
         group.position.set(def.pos[0], def.pos[1], def.pos[2]);
+        let fill = null;
+        let portY = FILL_H;
 
-        const glass = new THREE.Mesh(
-            new THREE.BoxGeometry(TANK_W, TANK_H, TANK_D),
-            new THREE.MeshPhysicalMaterial({
-                color: 0x2a1410,
-                metalness: 0.15,
-                roughness: 0.08,
-                transmission: 0.72,
-                thickness: 0.4,
-                transparent: true,
-                opacity: 0.55,
-                envMapIntensity: 1,
-            })
-        );
-        glass.castShadow = true;
-        group.add(glass);
-
-        const liquid = new THREE.Mesh(
-            new THREE.BoxGeometry(TANK_W * 0.82, 0.1, TANK_D * 0.82),
-            new THREE.MeshStandardMaterial({
-                color: def.color,
-                emissive: def.color,
-                emissiveIntensity: 0.55,
-                metalness: 0.3,
-                roughness: 0.2,
-                transparent: true,
-                opacity: 0.92,
-            })
-        );
-        group.add(liquid);
-
-        const frame = new THREE.LineSegments(
-            new THREE.EdgesGeometry(new THREE.BoxGeometry(TANK_W + 0.06, TANK_H + 0.06, TANK_D + 0.06)),
-            new THREE.LineBasicMaterial({ color: def.color, transparent: true, opacity: 0.85 })
-        );
-        group.add(frame);
-
-        if (def.hub) {
-            const ring = new THREE.Mesh(
-                new THREE.TorusGeometry(1.35, 0.03, 8, 48),
-                new THREE.MeshStandardMaterial({
-                    color: COLORS.income,
-                    emissive: COLORS.income,
-                    emissiveIntensity: 1.2,
-                    metalness: 0.9,
-                    roughness: 0.2,
-                })
-            );
-            ring.rotation.x = Math.PI / 2;
-            ring.position.y = 0.2;
-            group.add(ring);
-
-            const ring2 = ring.clone();
-            ring2.scale.set(1.15, 1.15, 1.15);
-            ring2.material = ring2.material.clone();
-            ring2.material.emissiveIntensity = 0.4;
-            ring2.material.opacity = 0.5;
-            ring2.material.transparent = true;
-            group.add(ring2);
+        switch (def.type) {
+            case 'silo': {
+                const shell = new THREE.Mesh(
+                    new THREE.CylinderGeometry(1.25, 1.45, FILL_H, 20),
+                    new THREE.MeshStandardMaterial({ color: 0x4a3828, metalness: 0.5, roughness: 0.45 })
+                );
+                shell.position.y = FILL_H / 2 - 0.2;
+                group.add(shell);
+                fill = createFill(def.color, 1.2, FILL_H);
+                fill.position.y = 0.15;
+                const rim = new THREE.Mesh(
+                    new THREE.TorusGeometry(1.5, 0.06, 8, 32),
+                    new THREE.MeshStandardMaterial({ color: SPICE_BRIGHT, emissive: SPICE, emissiveIntensity: 1.2 })
+                );
+                rim.rotation.x = Math.PI / 2;
+                rim.position.y = 0.35;
+                group.add(rim);
+                portY = FILL_H;
+                break;
+            }
+            case 'choam': {
+                const base = new THREE.Mesh(
+                    new THREE.BoxGeometry(1.1, 0.5, 1.1),
+                    new THREE.MeshStandardMaterial({ color: 0x3d3020, metalness: 0.7, roughness: 0.3 })
+                );
+                base.position.y = 0.25;
+                group.add(base);
+                const spire = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.15, 0.35, 2.8, 6),
+                    new THREE.MeshStandardMaterial({ color: CHOAM, emissive: CHOAM, emissiveIntensity: 0.35, metalness: 0.85, roughness: 0.2 })
+                );
+                spire.position.y = 1.6;
+                group.add(spire);
+                fill = createFill(def.color, 0.35, 1.2);
+                fill.position.y = 0.5;
+                portY = 0.5;
+                break;
+            }
+            case 'guild': {
+                const hull = new THREE.Mesh(
+                    new THREE.ConeGeometry(1.2, 0.8, 4),
+                    new THREE.MeshStandardMaterial({ color: 0x2a3540, metalness: 0.6, roughness: 0.35 })
+                );
+                hull.rotation.y = Math.PI / 4;
+                hull.position.y = 0.5;
+                group.add(hull);
+                const glow = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.55, 12, 12),
+                    new THREE.MeshStandardMaterial({ color: GUILD, emissive: GUILD, emissiveIntensity: 0.8, transparent: true, opacity: 0.7 })
+                );
+                glow.position.y = 0.9;
+                group.add(glow);
+                fill = createFill(def.color, 0.5, 0.8);
+                fill.position.y = 0.35;
+                portY = 0.6;
+                break;
+            }
+            case 'sietch': {
+                const dome = new THREE.Mesh(
+                    new THREE.SphereGeometry(1.1, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2),
+                    new THREE.MeshStandardMaterial({ color: SIETCH, roughness: 0.85 })
+                );
+                dome.position.y = -0.15;
+                group.add(dome);
+                const mound = new THREE.Mesh(new THREE.ConeGeometry(1.5, 0.5, 12), sandMat);
+                mound.position.y = -0.35;
+                group.add(mound);
+                fill = createFill(def.color, 0.7, 0.6);
+                fill.position.y = 0.1;
+                portY = 0.5;
+                break;
+            }
+            case 'imperial': {
+                [[-0.45, 0.35], [0.45, 0.35], [0, 0.75]].forEach(([x, h]) => {
+                    const b = new THREE.Mesh(
+                        new THREE.BoxGeometry(0.7, h, 0.6),
+                        new THREE.MeshStandardMaterial({ color: IMPERIAL, roughness: 0.7 })
+                    );
+                    b.position.set(x, h / 2, 0);
+                    group.add(b);
+                });
+                fill = createFill(def.color, 0.45, 0.7);
+                fill.position.y = 0.25;
+                portY = 0.6;
+                break;
+            }
+            case 'factory': {
+                const platform = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.2, 1), sandDarkMat);
+                platform.position.y = 0.1;
+                group.add(platform);
+                const harvester = new THREE.Mesh(
+                    new THREE.BoxGeometry(1.2, 0.45, 0.7),
+                    new THREE.MeshStandardMaterial({ color: 0x5a4a38, metalness: 0.5, roughness: 0.5 })
+                );
+                harvester.position.set(0, 0.45, 0);
+                group.add(harvester);
+                const wing = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.15, 0.05, 0.9),
+                    new THREE.MeshStandardMaterial({ color: 0x8a7a60, metalness: 0.6 })
+                );
+                wing.position.set(0, 0.75, 0);
+                group.add(wing);
+                fill = createFill(def.color, 0.4, 0.5);
+                fill.position.y = 0.3;
+                portY = 0.5;
+                break;
+            }
+            case 'pump': {
+                pumpGroup = group;
+                const harv = new THREE.Mesh(
+                    new THREE.BoxGeometry(1.4, 0.5, 0.9),
+                    new THREE.MeshStandardMaterial({ color: 0x4a4035, metalness: 0.55 })
+                );
+                harv.position.y = 0.35;
+                group.add(harv);
+                const pipe = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.08, 0.08, 1.2, 8),
+                    new THREE.MeshStandardMaterial({ color: 0x6a5a48, metalness: 0.7 })
+                );
+                pipe.rotation.z = Math.PI / 2;
+                pipe.position.set(0.6, 0.55, 0);
+                group.add(pipe);
+                for (let i = 0; i < 6; i++) {
+                    const seg = new THREE.Mesh(
+                        new THREE.SphereGeometry(0.22 + i * 0.04, 8, 8),
+                        new THREE.MeshStandardMaterial({ color: 0x3d2818, roughness: 0.9 })
+                    );
+                    seg.position.set(1.2 + i * 0.35, -0.3 + i * 0.08, 0);
+                    seg.userData.phase = i * 0.5;
+                    wormSegments.push(seg);
+                    group.add(seg);
+                }
+                fill = createFill(SPICE_BRIGHT, 0.35, 0.4);
+                fill.position.set(0.3, 0.5, 0);
+                portY = 0.5;
+                break;
+            }
+            default:
+                break;
         }
 
-        const labelEl = document.createElement('div');
-        labelEl.className = 'moniac-label';
-        labelEl.innerHTML = `${def.label}<small>${def.sub}</small>`;
-        const labelObj = new CSS2DObject(labelEl);
-        labelObj.position.set(0, TANK_H / 2 + 0.55, 0);
-        group.add(labelObj);
-
+        addLabel(group, def, portY + 0.65);
         scene.add(group);
-        return { group, liquid, glass, TANK_H, id: def.id, color: def.color };
+        return { group, fill, portY, id: def.id, color: def.color, type: def.type };
     }
 
-    TANK_DEFS.forEach((def) => {
-        tanks[def.id] = createTank(def);
+    NODE_DEFS.forEach((d) => {
+        nodes[d.id] = createNode(d);
     });
 
-    function setTankLevel(tank, level) {
-        const lvl = Math.max(0.08, Math.min(0.95, level));
-        const h = tank.TANK_H * lvl * 0.92;
-        tank.liquid.scale.y = h / 0.1;
-        tank.liquid.position.y = -tank.TANK_H / 2 + h / 2 + 0.05;
-        const pulse = 0.55 + lvl * 0.35;
-        tank.liquid.material.emissiveIntensity = pulse;
+    function setNodeLevel(node, level) {
+        if (!node?.fill) return;
+        const lvl = Math.max(0.06, Math.min(0.95, level));
+        const maxH = node.type === 'silo' ? FILL_H * 0.85 : 0.9;
+        const h = maxH * lvl;
+        node.fill.scale.y = Math.max(0.08, h / 0.08);
+        node.fill.position.y = (node.type === 'silo' ? 0.15 : 0.2) + h / 2;
+        node.fill.material.emissiveIntensity = 0.45 + lvl * 0.55;
     }
 
-    // —— Pipes ——
-    const PORT = {
-        top: [0, TANK_H / 2, 0],
-        bottom: [0, -TANK_H / 2, 0],
-        left: [-TANK_W / 2, 0, 0],
-        right: [TANK_W / 2, 0, 0],
-    };
-
-    function portWorld(id, side) {
-        const t = tanks[id];
-        if (!t) return new THREE.Vector3();
-        const off = PORT[side] || [0, 0, 0];
-        const gp = t.group.position;
-        return new THREE.Vector3(gp.x + off[0], gp.y + off[1], gp.z + off[2]);
+    function portWorld(id, key) {
+        const n = nodes[id];
+        const off = NODE_PORTS[id]?.[key] || [0, 0, 0];
+        const p = n.group.position;
+        return new THREE.Vector3(p.x + off[0], p.y + off[1], p.z + off[2]);
     }
 
-    function mid(a, b, yLift = 0.4) {
-        return new THREE.Vector3(
-            (a.x + b.x) * 0.5,
-            Math.max(a.y, b.y) + yLift,
-            (a.z + b.z) * 0.5
-        );
+    function mid(a, b, lift) {
+        return new THREE.Vector3((a.x + b.x) / 2, Math.max(a.y, b.y) + lift, (a.z + b.z) / 2);
     }
 
     function pipePath(from, to) {
-        const paths = {
-            'G-Y': () => {
-                const a = portWorld('G', 'right');
-                const b = portWorld('Y', 'left');
-                return [a, mid(a, b, 0.5), b];
-            },
-            'I-Y': () => {
-                const a = portWorld('I', 'left');
-                const b = portWorld('Y', 'right');
-                return [a, mid(a, b, 0.5), b];
-            },
-            'Y-C': () => {
-                const a = portWorld('Y', 'left');
-                const b = portWorld('C', 'top');
-                return [a, mid(a, b, 0.35), b];
-            },
-            'Y-T': () => {
-                const a = portWorld('Y', 'top');
-                const b = portWorld('T', 'bottom');
-                return [a, mid(a, b, 0.8), b];
-            },
-            'Y-S': () => {
-                const a = portWorld('Y', 'right');
-                const b = portWorld('S', 'top');
-                return [a, mid(a, b, 0.35), b];
-            },
-            'C-Y': () => {
-                const a = portWorld('C', 'right');
-                const b = portWorld('Y', 'bottom');
-                return [a, mid(a, b, 0.25), b];
-            },
+        const routes = {
+            'P-Y': () => [portWorld('P', 'out'), mid(portWorld('P', 'out'), portWorld('Y', 'inL'), 0.2), portWorld('Y', 'inL')],
+            'G-Y': () => [portWorld('G', 'out'), mid(portWorld('G', 'out'), portWorld('Y', 'inL'), 0.35), portWorld('Y', 'inL')],
+            'I-Y': () => [portWorld('I', 'out'), mid(portWorld('I', 'out'), portWorld('Y', 'inR'), 0.35), portWorld('Y', 'inR')],
+            'Y-C': () => [portWorld('Y', 'outL'), mid(portWorld('Y', 'outL'), portWorld('C', 'in'), 0.25), portWorld('C', 'in')],
+            'Y-T': () => [portWorld('Y', 'outT'), mid(portWorld('Y', 'outT'), portWorld('T', 'in'), 0.5), portWorld('T', 'in')],
+            'Y-S': () => [portWorld('Y', 'outR'), mid(portWorld('Y', 'outR'), portWorld('S', 'in'), 0.25), portWorld('S', 'in')],
+            'C-Y': () => [portWorld('C', 'out'), mid(portWorld('C', 'out'), portWorld('Y', 'inB'), 0.2), portWorld('Y', 'inB')],
         };
-        const fn = paths[`${from}-${to}`];
-        if (fn) return fn();
-        return [portWorld(from, 'bottom'), portWorld(to, 'top')];
+        const fn = routes[`${from}-${to}`];
+        return fn ? fn() : [portWorld(from, 'out') || portWorld(from, 'in'), portWorld(to, 'in')];
     }
 
     PIPES.forEach((p) => {
-        const pts = pipePath(p.from, p.to);
-        const curve = new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.35);
+        const curve = new THREE.CatmullRomCurve3(pipePath(p.from, p.to), false, 'catmullrom', 0.35);
         const tube = new THREE.Mesh(
-            new THREE.TubeGeometry(curve, 32, 0.07, 8, false),
+            new THREE.TubeGeometry(curve, 28, 0.09, 6, false),
             new THREE.MeshStandardMaterial({
-                color: 0x1a0c08,
-                metalness: 0.9,
-                roughness: 0.25,
+                color: 0x3d2810,
                 emissive: p.color,
-                emissiveIntensity: 0.15,
+                emissiveIntensity: 0.25,
+                roughness: 0.8,
                 transparent: true,
-                opacity: 0.85,
+                opacity: 0.88,
             })
         );
-        tube.castShadow = true;
+        tube.position.y = -0.15;
         scene.add(tube);
         pipeMeshes.push({ curve, color: p.color, key: `${p.from}-${p.to}` });
     });
 
-    // —— Ambient dust / ash (2049) ——
     function buildDust(count) {
         const geo = new THREE.BufferGeometry();
         const pos = new Float32Array(count * 3);
         for (let i = 0; i < count; i++) {
-            pos[i * 3] = (Math.random() - 0.5) * 18;
-            pos[i * 3 + 1] = Math.random() * 10;
-            pos[i * 3 + 2] = (Math.random() - 0.5) * 18;
+            pos[i * 3] = (Math.random() - 0.5) * 22;
+            pos[i * 3 + 1] = Math.random() * 6;
+            pos[i * 3 + 2] = (Math.random() - 0.5) * 22;
         }
         geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
         dustParticles = new THREE.Points(
             geo,
-            new THREE.PointsMaterial({
-                color: 0xff9a3c,
-                size: 0.04,
-                transparent: true,
-                opacity: 0.35,
-                depthWrite: false,
-            })
+            new THREE.PointsMaterial({ color: 0xe8c890, size: 0.06, transparent: true, opacity: 0.4, depthWrite: false })
         );
         scene.add(dustParticles);
     }
+    buildDust(reducedMotion ? 60 : 180);
 
-    buildDust(reducedMotion ? 80 : 220);
-
-    // Distant hologram pillars (Las Vegas ruins)
-    [-8, 8].forEach((x) => {
-        const holo = new THREE.Mesh(
-            new THREE.BoxGeometry(0.15, 6 + Math.random() * 4, 0.15),
-            new THREE.MeshStandardMaterial({
-                color: 0xff9a3c,
-                emissive: 0xff5c00,
-                emissiveIntensity: 0.9,
-                transparent: true,
-                opacity: 0.35,
-            })
-        );
-        holo.position.set(x, 2, -7 - Math.random() * 3);
-        scene.add(holo);
-    });
-
-    // —— Physics (unchanged model) ——
     function readControls() {
         return {
             gov: Number(controls.gov.value) / 100,
@@ -396,84 +501,32 @@ function initMoniac() {
 
     function updateLabels(c) {
         labels.gov.textContent = Math.round(c.gov * 100) + '%';
-        labels.rate.textContent = (c.rate * 100).toFixed(1).replace('.0', '') + '%';
+        labels.rate.textContent = Math.round((c.rate / 0.09) * 100) + '%';
         labels.tax.textContent = Math.round(c.tax * 100) + '%';
         labels.mpc.textContent = Math.round(c.mpc * 100) + '%';
     }
 
+    function flowIntensity(flow, cap = 0.55) {
+        return Math.min(cap, flow * 0.55);
+    }
+
     function computeFlows(c) {
-        const investFlow = Math.max(0.04, 0.28 * (1 - c.rate * 1.3));
+        const eq = macroEquilibrium(c);
+        const f = macroFlows(state.Y, eq);
+        const inject = eq.G + eq.I + eq.X;
         return {
-            gToY: c.gov * 0.45 + 0.02,
-            iToY: investFlow * 0.4,
-            yToC: state.Y * c.mpc * 0.35,
-            yToT: state.Y * c.tax * 0.3,
-            yToS: state.Y * (1 - c.mpc) * 0.25,
-            cToY: state.C * 0.28,
+            'P-Y': flowIntensity(eq.X / inject),
+            gToY: flowIntensity(eq.G / inject),
+            iToY: flowIntensity(eq.I / inject),
+            yToC: flowIntensity(f.C),
+            yToT: flowIntensity(f.T_flow),
+            yToS: flowIntensity(f.S_flow + f.M_flow),
+            cToY: flowIntensity(f.C * eq.mult * 0.1),
         };
     }
 
-    function stepPhysics(c, dt) {
-        const investBase = 0.28 * (1 - c.rate * 1.35);
-        const inject = c.gov * 0.55 + Math.max(0.05, investBase);
-        const leak = Math.max(0.12, c.tax * 0.55 + (1 - c.mpc) * 0.35);
-        const targetY = Math.min(0.98, inject / leak);
-        const k = 1 - Math.pow(0.001, dt);
-
-        state.Y += (targetY - state.Y) * k;
-        state.G += (c.gov * 0.85 - state.G) * k * 0.8;
-        state.I += (Math.max(0.08, investBase) - state.I) * k * 0.8;
-        state.T += (state.Y * c.tax * 0.9 - state.T) * k;
-        state.S += (state.Y * (1 - c.mpc) * 0.75 - state.S) * k;
-        state.C += (state.Y * c.mpc * 0.82 - state.C) * k;
-
-        if (hud.bnp) hud.bnp.textContent = String(Math.round(state.Y * 100)).padStart(3, '0');
-        if (hud.ledighet) hud.ledighet.textContent = ((1 - state.Y) * 11.5 + 2.2).toFixed(1) + '%';
-        if (hud.inflasjon) hud.inflasjon.textContent = Math.max(0, (state.Y - 0.62) * 52 + (c.gov - 0.35) * 12).toFixed(1) + '%';
-
-        if (hud.status) {
-            if (state.Y > 0.88) hud.status.textContent = 'OVEROPPHETET — VENTILER ÅPNER';
-            else if (state.Y < 0.28) hud.status.textContent = 'DEFLATORISK SJOK — PUMPE TOM';
-            else if (c.rate > 0.055 && state.I < 0.15) hud.status.textContent = 'PENGEPOLITISK BREMS';
-            else hud.status.textContent = 'NOMINAL SIRKULASJON STABIL';
-        }
-
-        setTankLevel(tanks.Y, state.Y);
-        setTankLevel(tanks.C, state.C);
-        setTankLevel(tanks.T, state.T);
-        setTankLevel(tanks.S, state.S);
-        setTankLevel(tanks.G, state.G);
-        setTankLevel(tanks.I, state.I);
-
-        hubGlow.intensity = 0.8 + state.Y * 1.2;
-        rimPink.intensity = 1.2 + state.C * 2;
-        scene.fog.density = 0.038 + state.Y * 0.018;
-
-        return computeFlows(c);
-    }
-
-    const flowSphereGeo = new THREE.SphereGeometry(0.055, 6, 6);
-    const flowMats = new Map();
-
-    function flowMaterial(color) {
-        if (!flowMats.has(color)) {
-            flowMats.set(
-                color,
-                new THREE.MeshStandardMaterial({
-                    color,
-                    emissive: color,
-                    emissiveIntensity: 1.6,
-                    metalness: 0.2,
-                    roughness: 0.3,
-                    transparent: true,
-                    opacity: 0.92,
-                })
-            );
-        }
-        return flowMats.get(color);
-    }
-
     const flowKeyMap = {
+        'P-Y': 'P-Y',
         'G-Y': 'gToY',
         'I-Y': 'iToY',
         'Y-C': 'yToC',
@@ -482,14 +535,68 @@ function initMoniac() {
         'C-Y': 'cToY',
     };
 
+    function stepPhysics(c, dt) {
+        const eq = macroEquilibrium(c);
+        eq.rate = c.rate;
+        const targets = macroFlows(eq.Y, eq);
+        const k = 1 - Math.pow(0.001, dt);
+
+        state.Y += (eq.Y - state.Y) * k;
+        state.G += (c.gov - state.G) * k * 0.85;
+        state.I += (eq.I / MACRO.I_BASE - state.I) * k * 0.85;
+        state.T += (targets.T_flow - state.T) * k;
+        state.S += (targets.S_flow - state.S) * k;
+        state.C += (targets.C - state.C) * k;
+        state.P += (c.rate / 0.09 - state.P) * k;
+
+        const uPct = macroUnemployment(state.Y);
+        const infl = macroInflation(state.Y, eq.G);
+
+        if (hud.bnp) hud.bnp.textContent = String(Math.round(state.Y * 100)).padStart(3, '0');
+        if (hud.mult) hud.mult.textContent = '×' + eq.mult.toFixed(2);
+        if (hud.ledighet) hud.ledighet.textContent = uPct.toFixed(1) + '%';
+        if (hud.inflasjon) hud.inflasjon.textContent = infl.toFixed(1) + '%';
+        if (hud.status) hud.status.textContent = macroStatus(state.Y, eq, uPct);
+
+        setNodeLevel(nodes.Y, state.Y);
+        setNodeLevel(nodes.C, state.C / Math.max(0.2, eq.Y));
+        setNodeLevel(nodes.T, state.T / Math.max(0.15, eq.Y));
+        setNodeLevel(nodes.S, state.S / Math.max(0.15, eq.Y));
+        setNodeLevel(nodes.G, state.G);
+        setNodeLevel(nodes.I, Math.min(1, state.I));
+        setNodeLevel(nodes.P, state.P);
+
+        spiceLight.intensity = 1.2 + state.Y * 2;
+        scene.fog.density = 0.024 + Math.max(0, (state.Y - MACRO.Y_POT) * 0.025);
+
+        if (!reducedMotion && pumpGroup) {
+            const t = performance.now() * 0.001;
+            wormSegments.forEach((seg, i) => {
+                seg.position.y = -0.35 + i * 0.08 + Math.sin(t * 2 + seg.userData.phase) * 0.06;
+            });
+            pumpGroup.rotation.y = Math.sin(t * 0.4) * 0.05;
+        }
+
+        return computeFlows(c);
+    }
+
+    const flowGeo = new THREE.SphereGeometry(0.06, 6, 6);
+    const flowMats = new Map();
+    function flowMat(color) {
+        if (!flowMats.has(color)) {
+            flowMats.set(color, new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 1.8, transparent: true, opacity: 0.95 }));
+        }
+        return flowMats.get(color);
+    }
+
     function spawnParticles(flows) {
-        const cap = window.innerWidth < 768 ? 70 : 140;
+        const cap = window.innerWidth < 768 ? 65 : 130;
         pipeMeshes.forEach(({ curve, color, key }) => {
             const rate = flows[flowKeyMap[key]] || 0.05;
-            if (Math.random() < rate * 2.5 && flowParticles.length < cap) {
-                const mesh = new THREE.Mesh(flowSphereGeo, flowMaterial(color));
+            if (Math.random() < rate * 2.8 && flowParticles.length < cap) {
+                const mesh = new THREE.Mesh(flowGeo, flowMat(color));
                 scene.add(mesh);
-                flowParticles.push({ mesh, curve, t: 0, speed: 0.25 + rate * 0.8 + Math.random() * 0.2 });
+                flowParticles.push({ mesh, curve, t: 0, speed: 0.28 + rate * 0.9 });
             }
         });
     }
@@ -501,11 +608,10 @@ function initMoniac() {
                 scene.remove(p.mesh);
                 return false;
             }
-            const pt = p.curve.getPointAt(Math.min(1, Math.max(0, p.t)));
+            const pt = p.curve.getPointAt(p.t);
             if (!Number.isFinite(pt.x)) return false;
             p.mesh.position.copy(pt);
-            const s = 0.7 + Math.sin(p.t * Math.PI) * 0.5;
-            p.mesh.scale.setScalar(s);
+            p.mesh.scale.setScalar(0.6 + Math.sin(p.t * Math.PI) * 0.5);
             return true;
         });
     }
@@ -514,8 +620,10 @@ function initMoniac() {
         if (!dustParticles || reducedMotion) return;
         const arr = dustParticles.geometry.attributes.position.array;
         for (let i = 0; i < arr.length; i += 3) {
-            arr[i + 1] -= dt * (0.15 + (i % 5) * 0.02);
-            if (arr[i + 1] < 0) arr[i + 1] = 10;
+            arr[i] += dt * 0.25;
+            arr[i + 1] -= dt * 0.08;
+            if (arr[i] > 11) arr[i] = -11;
+            if (arr[i + 1] < 0) arr[i + 1] = 6;
         }
         dustParticles.geometry.attributes.position.needsUpdate = true;
     }
@@ -524,11 +632,8 @@ function initMoniac() {
     let animId = 0;
 
     function renderFrame() {
-        if (composer) {
-            composer.render();
-        } else {
-            renderer.render(scene, camera);
-        }
+        if (composer) composer.render();
+        else renderer.render(scene, camera);
         labelRenderer.render(scene, camera);
     }
 
@@ -544,18 +649,15 @@ function initMoniac() {
         animId = requestAnimationFrame(animate);
         const dt = Math.min(0.05, (now - last) / 1000);
         last = now;
-
         const c = readControls();
         updateLabels(c);
         const flows = stepPhysics(c, dt);
-
         if (!reducedMotion) {
             spawnParticles(flows);
             updateFlowParticles(dt);
             updateDust(dt);
             orbit.update();
         }
-
         renderFrame();
     }
 
@@ -569,10 +671,8 @@ function initMoniac() {
         camera.updateProjectionMatrix();
         renderer.setSize(width, height, false);
         labelRenderer.setSize(width, height);
-        if (composer) {
-            composer.setSize(width, height);
-            bloomPass?.resolution.set(width, height);
-        }
+        composer?.setSize(width, height);
+        bloomPass?.resolution.set(width, height);
     }
 
     Object.values(controls).forEach((el) => {
@@ -587,43 +687,44 @@ function initMoniac() {
         controls.rate.value = 4.5;
         controls.tax.value = 28;
         controls.mpc.value = 72;
-        Object.assign(state, { Y: 0.42, C: 0.3, T: 0.18, S: 0.15, G: 0.2, I: 0.22 });
+        const c0 = readControls();
+        const eq0 = macroEquilibrium(c0);
+        const f0 = macroFlows(eq0.Y, eq0);
+        Object.assign(state, {
+            Y: eq0.Y * 0.95,
+            C: f0.C,
+            T: f0.T_flow,
+            S: f0.S_flow,
+            G: c0.gov,
+            I: eq0.I / MACRO.I_BASE,
+            P: c0.rate / 0.09,
+        });
         flowParticles.forEach((p) => scene.remove(p.mesh));
         flowParticles = [];
-        updateLabels(readControls());
+        updateLabels(c0);
+        if (reducedMotion) renderStill();
     });
 
-    window.matchMedia('(prefers-reduced-motion: reduce)').addEventListener?.('change', (e) => {
-        reducedMotion = e.matches;
-        orbit.autoRotate = !reducedMotion;
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, reducedMotion ? 1 : 2));
-    });
-
-    const observer = new IntersectionObserver(
-        (entries) => {
-            const visible = entries[0]?.isIntersecting;
-            if (visible && !running) {
-                running = true;
-                if (reducedMotion) {
-                    renderStill();
-                } else {
-                    last = performance.now();
-                    animate(last);
-                }
-            } else if (!visible) {
-                running = false;
-                cancelAnimationFrame(animId);
+    const observer = new IntersectionObserver((entries) => {
+        const visible = entries[0]?.isIntersecting;
+        if (visible && !running) {
+            running = true;
+            if (reducedMotion) renderStill();
+            else {
+                last = performance.now();
+                animate(last);
             }
-        },
-        { threshold: 0.1 }
-    );
+        } else if (!visible) {
+            running = false;
+            cancelAnimationFrame(animId);
+        }
+    }, { threshold: 0.1 });
     observer.observe(panel);
 
     resize();
     updateLabels(readControls());
-    if (reducedMotion) {
-        renderStill();
-    } else {
+    if (reducedMotion) renderStill();
+    else {
         running = true;
         animate(performance.now());
     }

@@ -853,9 +853,9 @@
 
         .moniac-panel {
             position: relative;
-            background: linear-gradient(165deg, rgba(36, 18, 12, 0.85) 0%, rgba(10, 6, 4, 0.95) 100%);
+            background: linear-gradient(165deg, rgba(61, 40, 20, 0.9) 0%, rgba(26, 16, 8, 0.95) 100%);
             backdrop-filter: blur(8px);
-            border: 1px solid rgba(255, 154, 60, 0.22);
+            border: 1px solid rgba(201, 168, 108, 0.35);
             padding: 1rem;
             min-height: 480px;
             overflow: hidden;
@@ -865,25 +865,10 @@
             position: relative;
             width: 100%;
             min-height: 460px;
-            border: 1px solid rgba(255, 154, 60, 0.12);
-            background: radial-gradient(ellipse at 50% 80%, rgba(255, 92, 0, 0.12) 0%, transparent 55%),
-                        #0a0604;
-        }
-
-        .moniac-viewport::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            pointer-events: none;
-            z-index: 2;
-            background: repeating-linear-gradient(
-                0deg,
-                transparent 0,
-                transparent 2px,
-                rgba(0, 0, 0, 0.12) 2px,
-                rgba(0, 0, 0, 0.12) 3px
-            );
-            opacity: 0.45;
+            border: 1px solid rgba(201, 168, 108, 0.2);
+            background: radial-gradient(ellipse at 50% 20%, rgba(255, 200, 120, 0.15) 0%, transparent 50%),
+                        radial-gradient(ellipse at 50% 100%, rgba(122, 92, 46, 0.25) 0%, transparent 60%),
+                        #2a1a0c;
         }
 
         .moniac-hint {
@@ -895,7 +880,7 @@
             font-size: 0.62rem;
             letter-spacing: 0.14em;
             text-transform: uppercase;
-            color: rgba(255, 154, 60, 0.45);
+            color: rgba(201, 168, 108, 0.5);
             pointer-events: none;
         }
 
@@ -908,7 +893,7 @@
             font-size: 0.62rem;
             letter-spacing: 0.2em;
             text-transform: uppercase;
-            color: rgba(255, 154, 60, 0.35);
+            color: rgba(232, 146, 58, 0.55);
             pointer-events: none;
         }
 
@@ -956,8 +941,8 @@
             font-weight: 700;
             font-size: 11px;
             letter-spacing: 0.12em;
-            color: #fbe4cf;
-            text-shadow: 0 0 8px rgba(255, 154, 60, 0.8);
+            color: #f5e6c8;
+            text-shadow: 0 0 10px rgba(232, 146, 58, 0.9);
             text-align: center;
             pointer-events: none;
             user-select: none;
@@ -975,7 +960,7 @@
 
         .moniac-hud {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             gap: 0.75rem;
             margin-top: 1rem;
             padding-top: 1rem;
@@ -1129,6 +1114,10 @@
 
             .moniac-hud {
                 grid-template-columns: 1fr 1fr;
+            }
+
+            .moniac-readout .val {
+                font-size: 1.15rem;
             }
 
             .moniac-status {
@@ -1628,65 +1617,70 @@
 
         <section class="section" id="moniac">
             <div class="section-label">03 // MONIAC</div>
-            <h2>Phillips-maskinen</h2>
-            <p class="subtitle">3D hydraulisk modell — MONIAC MK.II · Las Vegas-sektor</p>
+            <h2>Spice-økonomien på Arrakis</h2>
+            <p class="subtitle">MONIAC MK.II — hydraulisk modell i Dune-landskap</p>
             <p class="moniac-note">
-                I 1949 bygde økonomen Bill Phillips en fysisk datamaskin der farget vann i glassbeholdere
-                representerte penger, skatter og sparing. Denne interaktive versjonen er inspirert av
-                <strong>MONIAC</strong> (Monetary National Income Analogue Computer) og Skravleklassens
-                makroøkonomi-temaer — juster pumper og ventiler for å se sirkulasjonen.
-                <a href="https://en.wikipedia.org/wiki/Phillips_Machine" target="_blank" rel="noopener noreferrer">Les mer om originalen ↗</a>
+                Bill Phillips’ maskin (1949) møter <strong>Arrakis</strong>: total spice-høst (<strong>Y</strong>),
+                keiserens andel via CHOAM (<strong>t</strong>), umiddelbart forbruk i Gilde og hoff (<strong>c</strong>),
+                lagring i sietcher og Hus-skattkamre (<strong>s</strong>), keiserens Sardaukar-utgifter (<strong>G</strong>),
+                investering i harvestere og ornithoptre (<strong>I</strong>), og pumpe fra harvestere og sandormer (<strong>P</strong>).
+                Likvekt: <strong>Y = (G+I+X) / (1−c·(1−t)+m)</strong> · <em>m</em> = 22 % (utenlandsk lekkasje).
+                <a href="https://en.wikipedia.org/wiki/Phillips_Machine" target="_blank" rel="noopener noreferrer">Phillips-maskinen ↗</a>
             </p>
 
             <div class="moniac-wrap">
                 <div class="moniac-panel">
                     <div class="moniac-viewport">
-                        <span class="moniac-watermark">LV-SEKTOR // MONIAC MK.II</span>
-                        <canvas id="moniac-canvas" aria-label="3D hydraulisk modell av nasjonaløkonomien med tanker og rør"></canvas>
-                        <p class="moniac-hint">Dra · zoom · 2049</p>
+                        <span class="moniac-watermark">ARRAKIS // SPICE-SIRKULASJON</span>
+                        <canvas id="moniac-canvas" aria-label="3D spice-økonomi på Arrakis med harvestere, sietcher og CHOAM"></canvas>
+                        <p class="moniac-hint">Dra · zoom · ørkenen</p>
                     </div>
                     <div class="moniac-hud" aria-live="polite">
                         <div class="moniac-readout">
                             <div class="val" id="moniac-bnp">042</div>
-                            <div class="lbl">BNP-indeks</div>
+                            <div class="lbl">Spice-strøm (Y)</div>
+                        </div>
+                        <div class="moniac-readout">
+                            <div class="val" id="moniac-mult">×1.43</div>
+                            <div class="lbl">Multiplikator</div>
                         </div>
                         <div class="moniac-readout">
                             <div class="val" id="moniac-ledighet">6.8%</div>
-                            <div class="lbl">Ledighet</div>
+                            <div class="lbl">Ledighet (NAIRU)</div>
                         </div>
                         <div class="moniac-readout">
                             <div class="val" id="moniac-inflasjon">1.2%</div>
-                            <div class="lbl">Inflasjonstrykk</div>
+                            <div class="lbl">Spice-prispress</div>
                         </div>
                         <p class="moniac-status" id="moniac-status">NOMINAL SIRKULASJON STABIL</p>
                     </div>
                 </div>
 
-                <aside class="moniac-controls" aria-label="Styring av hydraulisk modell">
+                <aside class="moniac-controls" aria-label="Styring av spice-økonomien">
                     <div class="moniac-control">
                         <header>
-                            <label for="moniac-gov">Offentlige utgifter</label>
+                            <label for="moniac-gov">G — Keiserens utgifter</label>
                             <span class="value" id="moniac-gov-val">35%</span>
                         </header>
                         <input type="range" id="moniac-gov" min="5" max="80" value="35" aria-valuemin="5" aria-valuemax="80">
                     </div>
                     <div class="moniac-control">
                         <header>
-                            <label for="moniac-rate">Styringsrente</label>
+                            <label for="moniac-rate">P — Harvester / sandorm</label>
                             <span class="value" id="moniac-rate-val">4.5%</span>
                         </header>
                         <input type="range" id="moniac-rate" min="0" max="9" step="0.5" value="4.5" aria-valuemin="0" aria-valuemax="9">
                     </div>
                     <div class="moniac-control">
                         <header>
-                            <label for="moniac-tax">Skattesats</label>
+                            <label for="moniac-tax">t — CHOAM til keiser</label>
                             <span class="value" id="moniac-tax-val">28%</span>
                         </header>
                         <input type="range" id="moniac-tax" min="10" max="55" value="28" aria-valuemin="10" aria-valuemax="55">
                     </div>
                     <div class="moniac-control">
                         <header>
-                            <label for="moniac-mpc">Marginal forbruksandel</label>
+                            <label for="moniac-mpc">c — Umiddelbart forbruk</label>
                             <span class="value" id="moniac-mpc-val">72%</span>
                         </header>
                         <input type="range" id="moniac-mpc" min="45" max="92" value="72" aria-valuemin="45" aria-valuemax="92">
@@ -1923,3 +1917,4 @@
     </script>
 </body>
 </html>
+
