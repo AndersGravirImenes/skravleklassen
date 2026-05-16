@@ -1,49 +1,54 @@
 /**
- * Spice harvester — Dune II-sprites i 8 retninger, parametre fra Dune Dynasty unitinfo.
- * @see https://github.com/gameflorist/dunedynasty — UNIT_HARVESTER (index 16)
- * Sprite: SHAPE_HARVESTER, indexStart 22, indexEnd 101, dimension 24,
- * movingSpeedFactor 20, MOVEMENT_HARVESTER, harvest.wsa
- *
- * Grafikk: D2TM Unit_HarvesterSand.bmp (8×40 px retninger, 2 animasjonsrader × 39 px)
+ * Spice harvester — Dune II-sprites, parametre fra Dune Dynasty unitinfo.
+ * @see https://github.com/gameflorist/dunedynasty — UNIT_HARVESTER (groundSpriteID 248)
  */
 import * as THREE from 'three';
 
-/** Matcher g_table_unitInfo[UNIT_HARVESTER] i dunedynasty */
+/** Matcher g_table_unitInfo[UNIT_HARVESTER] */
 export const HARVESTER_UNIT = {
     indexStart: 22,
     indexEnd: 101,
     dimension: 24,
     movingSpeedFactor: 20,
+    groundSpriteID: 248,
     directions: 8,
-    animRows: 2,
 };
 
-/** D2TM-ark layout (320×78) */
-export const SHEET = {
+/** Ark fra UNITS.SHP (dune.pak) — 8 retninger, groundSpriteID 248..255 */
+const GAME_SHEET = {
+    url: 'images/moniac/harvester-game.png',
+    cols: 1,
+    rows: 8,
+    frameW: 24,
+    frameH: 19,
+    dirOffset: 0,
+};
+
+/** Fallback: D2TM Unit_HarvesterSand.bmp */
+const SAND_SHEET = {
+    url: 'images/moniac/harvester-sand.png',
     cols: 8,
     rows: 2,
     frameW: 40,
     frameH: 39,
-    /** Visuell justering mot isometrisk Dune II (prøv ±1 ved behov) */
     dirOffset: 2,
 };
 
-const SHEET_URL = 'images/moniac/harvester-sand.png';
+let activeSheet = GAME_SHEET;
+let atlasPromise = null;
 
 /** Samme som Orientation_256To8 i dunedynasty/src/tools/orientation.c */
 export function orientation256To8(orient256) {
     return ((orient256 + 16) & 0xe0) >> 5;
 }
 
-/** Bevegelsesretning (XZ) + kameravinkel → 8 sprite-retninger */
 export function headingToDir8(headingRad, cameraYaw) {
     const rel = headingRad - cameraYaw;
     const norm = ((rel / (Math.PI * 2)) % 1 + 1) % 1;
     const orient256 = Math.round(norm * 256) & 0xff;
-    return (orientation256To8(orient256) + SHEET.dirOffset) % 8;
+    return (orientation256To8(orient256) + activeSheet.dirOffset) % 8;
 }
 
-/** Hastighet skalert med P-slider; movingSpeedFactor 20 som referanse */
 export function speedFromPump(pump01, base = 0.04) {
     const f = HARVESTER_UNIT.movingSpeedFactor / 20;
     return base * f * (0.18 + pump01 * 1.72);
@@ -75,32 +80,31 @@ function chromaKeyTexture(image) {
     return tex;
 }
 
-let atlasPromise = null;
+function loadSheet(sheet) {
+    return new Promise((resolve, reject) => {
+        new THREE.TextureLoader().load(
+            sheet.url,
+            (tex) => {
+                activeSheet = sheet;
+                const keyed = chromaKeyTexture(tex.image);
+                tex.dispose();
+                resolve(keyed);
+            },
+            undefined,
+            reject
+        );
+    });
+}
 
-export function loadHarvesterAtlas(url = SHEET_URL) {
+export function loadHarvesterAtlas() {
     if (!atlasPromise) {
-        atlasPromise = new Promise((resolve, reject) => {
-            new THREE.TextureLoader().load(
-                url,
-                (tex) => {
-                    const keyed = chromaKeyTexture(tex.image);
-                    tex.dispose();
-                    resolve(keyed);
-                },
-                undefined,
-                reject
-            );
-        });
+        atlasPromise = loadSheet(GAME_SHEET).catch(() => loadSheet(SAND_SHEET));
     }
     return atlasPromise;
 }
 
-/**
- * @param {THREE.Texture} atlas
- * @param {number} worldScale
- */
-export function createHarvesterSprite(atlas, worldScale = 2.15) {
-    const aspect = SHEET.frameW / SHEET.frameH;
+export function createHarvesterSprite(atlas, worldScale = 2.35) {
+    const aspect = activeSheet.frameW / activeSheet.frameH;
     const mat = new THREE.MeshBasicMaterial({
         map: atlas,
         transparent: true,
@@ -120,9 +124,17 @@ export function createHarvesterSprite(atlas, worldScale = 2.15) {
 export function setHarvesterFrame(mesh, dir8, animRow) {
     const map = mesh.material.map;
     if (!map) return;
-    const col = dir8 % SHEET.cols;
-    const row = animRow % SHEET.rows;
-    map.repeat.set(1 / SHEET.cols, 1 / SHEET.rows);
-    map.offset.set(col / SHEET.cols, 1 - (row + 1) / SHEET.rows);
+    const { cols, rows } = activeSheet;
+    let col;
+    let row;
+    if (cols === 1) {
+        col = 0;
+        row = dir8 % rows;
+    } else {
+        col = dir8 % cols;
+        row = animRow % rows;
+    }
+    map.repeat.set(1 / cols, 1 / rows);
+    map.offset.set(col / cols, 1 - (row + 1) / rows);
     map.needsUpdate = true;
 }
