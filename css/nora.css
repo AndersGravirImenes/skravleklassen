@@ -363,9 +363,8 @@ a { color: inherit; text-decoration: none; }
     margin: 0 0 0.85rem;
 }
 
-.nora-fieldset:disabled {
-    opacity: 0.45;
-    pointer-events: none;
+.nora-fieldset--off {
+    opacity: 0.5;
 }
 
 .nora-fieldset legend {

@@ -582,7 +582,10 @@ function initNora() {
 
     function syncFrontfagUi(ctrl) {
         const on = ctrl.frontfag;
-        if (frontfagFieldset) frontfagFieldset.disabled = !on;
+        if (frontfagFieldset) {
+            frontfagFieldset.classList.toggle('nora-fieldset--off', !on);
+            frontfagFieldset.removeAttribute('disabled');
+        }
         if (laborCanvas) laborCanvas.classList.toggle('is-dimmed', !on);
     }
 
@@ -843,15 +846,21 @@ function initNora() {
 function bindSlider(id, labelId, fmt) {
     const el = document.getElementById(id);
     const label = document.getElementById(labelId);
+    if (!el) {
+        console.warn(`NORA: mangler glidebryter #${id}`);
+        return { get value() { return 0; } };
+    }
     const obj = {
         get value() {
-            return Number(el?.value ?? 0);
+            const n = Number(el.value);
+            return Number.isFinite(n) ? n : 0;
         },
     };
     const update = () => {
         if (label) label.textContent = fmt(obj.value);
     };
-    el?.addEventListener('input', update);
+    el.addEventListener('input', update);
+    el.addEventListener('change', update);
     update();
     return obj;
 }
