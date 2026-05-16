@@ -1122,6 +1122,11 @@
             .moniac-actions {
                 grid-column: 1 / -1;
             }
+
+            .moniac-control--gov,
+            .moniac-control--save {
+                grid-column: 1 / -1;
+            }
         }
 
         @media (max-width: 520px) {
@@ -1639,9 +1644,12 @@
             <p class="moniac-note">
                 Bill Phillips’ maskin (1949) møter <strong>Arrakis</strong>: total spice-høst (<strong>Y</strong>),
                 skattesats (<strong>t</strong>), MPC (<strong>c</strong>),
-                lagring i sietcher og Hus-skattkamre (<strong>s</strong>), offentlig forbruk via keiseren (<strong>G</strong>),
-                investering i harvestere og ornithoptre (<strong>I</strong>), og pumpe fra harvestere og sandormer (<strong>P</strong>).
-                Likvekt: <strong>Y = (G+I+X) / (1−c·(1−t)+m)</strong> · <em>m</em> = 22 % (utenlandsk lekkasje).
+                sparing til sietch (<strong>s</strong>) og importlekkasje (<strong>m</strong>) — egne glidere;
+                offentlig forbruk fra statskassen (<strong>G</strong>), investering fra banktank (<strong>I</strong>),
+                autonom eksport (<strong>X</strong>) via harvester/sandorm (<strong>P</strong>).
+                Sub-tanker: statskasse (skatt <strong>t</strong>), sietch-bank (<strong>s</strong>), utland (<strong>m</strong>).
+                Likevekt når lekkasjer = injeksjoner: <strong>S + T + M = I + G + X</strong>
+                (eller <strong>Y = C + I + G + (X − M)</strong>).
                 Harvestere patruljerer ørkenen (levende enheter inspirert av
                 <a href="https://github.com/Robbington/dune-js" target="_blank" rel="noopener noreferrer">dune-js</a>;
                 harvestere bruker Dune II-sprites (8 retninger) etter
@@ -1705,9 +1713,26 @@
                     <div class="moniac-control">
                         <header>
                             <label for="moniac-mpc">c — MPC</label>
-                            <span class="value" id="moniac-mpc-val">72%</span>
+                            <span class="value" id="moniac-mpc-val">48%</span>
                         </header>
-                        <input type="range" id="moniac-mpc" min="45" max="92" value="72" aria-valuemin="45" aria-valuemax="92">
+                        <input type="range" id="moniac-mpc" min="20" max="85" value="48" aria-valuemin="20" aria-valuemax="85">
+                    </div>
+                    <div class="moniac-control moniac-control--save">
+                        <figure class="moniac-control-illus">
+                            <img src="images/moniac/silo.jpg" alt="Spice-silo — illustrasjon til sparing s i sietch" width="320" height="180" loading="lazy" decoding="async">
+                        </figure>
+                        <header>
+                            <label for="moniac-save">s — Sparerate (sietch)</label>
+                            <span class="value" id="moniac-save-val">12%</span>
+                        </header>
+                        <input type="range" id="moniac-save" min="0" max="40" value="12" aria-valuemin="0" aria-valuemax="40">
+                    </div>
+                    <div class="moniac-control">
+                        <header>
+                            <label for="moniac-import">m — Importtilbøyelighet</label>
+                            <span class="value" id="moniac-import-val">22%</span>
+                        </header>
+                        <input type="range" id="moniac-import" min="5" max="45" value="22" aria-valuemin="5" aria-valuemax="45">
                     </div>
                     <div class="moniac-actions">
                         <button type="button" class="btn" id="moniac-reset">› Nullstill modell</button>

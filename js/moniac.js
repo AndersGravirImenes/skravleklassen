@@ -34,8 +34,8 @@ const NODE_DEFS = [
     { id: 'C', label: 'C', sub: 'MPC', pos: [-3.4, 0, 2.6], color: COLORS.consume, type: 'guild' },
     { id: 'Y', label: 'Y', sub: 'TOTAL SPICE-HØST', pos: [0, 0, 0], color: COLORS.income, type: 'silo', hub: true },
     { id: 'T', label: 'T', sub: 'SKATTESATS', pos: [3.4, 0, -2.6], color: COLORS.tax, type: 'choam' },
-    { id: 'I', label: 'I', sub: 'HARVESTER · ORNITHOPTER', pos: [3.4, 0, 0.2], color: COLORS.invest, type: 'factory' },
-    { id: 'S', label: 'S', sub: 'SIETCH · HUS-SKATT', pos: [3.4, 0, 2.6], color: COLORS.save, type: 'sietch' },
+    { id: 'I', label: 'I', sub: 'INVEST RATE · BANK', pos: [3.4, 0, 0.2], color: COLORS.invest, type: 'factory' },
+    { id: 'S', label: 'S', sub: 'SPARERATE · SILO', pos: [3.4, 0, 2.6], color: COLORS.save, type: 'sietch' },
 ];
 
 const PIPES = [
@@ -59,46 +59,127 @@ const NODE_PORTS = {
 };
 
 const MACRO = {
-    Y_POT: 0.92,
+    Y_POT: 0.88,
     NAIRU: 0.042,
-    MPI: 0.22,
-    X_AUTO: 0.1,
-    G_SCALE: 0.22,
-    I_BASE: 0.14,
-    R_NEUTRAL: 0.025,
-    R_SENS: 1.6,
-    I_FLOOR: 0.25,
+    /** m — importtilbøyelighet (øvre høyre ventil) */
+    M: 0.22,
+    /** Autonom eksport X (harvester / utland) — skaleres med P */
+    X_BASE: 0.06,
+    X_RATE_SCALE: 0.22,
+    /** I_rate — utstrømning fra sparetank (BankTank) */
+    I_BASE: 0.35,
+    R_NEUTRAL: 0.045,
+    R_SENS: 1.4,
+    I_FLOOR: 0.2,
     PI_TARGET: 2.0,
     OKUN_COEF: 7.5,
     PHILLIPS_COEF: 9,
-    FISCAL_INFL_COEF: 5,
+    FISCAL_INFL_COEF: 4,
+    /** Dynamikk: hvor raskt strømmer vann per sekund */
+    FLOW_GAIN: 2.8,
 };
 
-function harvestFromRate(rate) {
-    return MACRO.X_AUTO * (0.45 + rate * 9.5);
+/** Autonom injeksjon X fra harvester/sandorm (P) */
+function exportFromRate(rate) {
+    return MACRO.X_BASE + rate * MACRO.X_RATE_SCALE;
 }
 
-function macroEquilibrium(c) {
-    const t = c.tax;
-    const mpc = c.mpc;
-    const G = c.gov * MACRO.G_SCALE;
-    const rateGap = Math.max(0, c.rate - MACRO.R_NEUTRAL);
-    const I = MACRO.I_BASE * Math.max(MACRO.I_FLOOR, 1 - MACRO.R_SENS * rateGap);
-    const X = harvestFromRate(c.rate);
-    const A = G + I + X;
-    const denom = 1 - mpc * (1 - t) + MACRO.MPI;
-    const mult = denom > 0.08 ? 1 / denom : 12;
-    const Y = Math.min(0.98, A * mult);
-    return { G, I, X, A, mult, denom, Y, t, mpc };
+/**
+ * Parametre fra glidere → ventiler i MONIAC.
+ * Normaliseres hvis t+c+s+m > 1 (summerer til mer enn 100 % lekkasje).
+ */
+function tankParams(controls) {
+    let t = controls.tax;
+    let c = controls.mpc;
+    let s = controls.save;
+    let m = controls.import;
+    const sum = t + c + s + m;
+    const normalized = sum > 1.001;
+    if (normalized) {
+        const k = 1 / sum;
+        t *= k;
+        c *= k;
+        s *= k;
+        m *= k;
+    }
+    const rateGap = Math.max(0, controls.rate - MACRO.R_NEUTRAL);
+    const I_rate = MACRO.I_BASE * Math.max(MACRO.I_FLOOR, 1 - MACRO.R_SENS * rateGap);
+    return {
+        t,
+        c,
+        s,
+        m,
+        G_rate: controls.gov,
+        I_rate,
+        X: exportFromRate(controls.rate),
+        rate: controls.rate,
+        normalized,
+        rawSum: sum,
+    };
 }
 
-function macroFlows(Y, eq) {
-    const { mpc, t } = eq;
-    const C = mpc * (1 - t) * Y;
-    const T_flow = t * Y;
-    const S_flow = (1 - mpc) * Y;
-    const M_flow = MACRO.MPI * Y;
-    return { C, T_flow, S_flow, M_flow, G: eq.G, I: eq.I };
+function createInitialTanks(p) {
+    const Y = 0.52;
+    return {
+        Y,
+        GovtTank: p.t * Y * 0.55,
+        BankTank: p.s * Y * 0.5,
+        ForeignTank: 0.04,
+    };
+}
+
+/**
+ * Ett tidssteg — Phillips sub-tanker.
+ * Lekkasjer: T + S + M (+ c direkte tilbake som C).
+ * Injeksjoner: G (fra GovtTank) + I (fra BankTank) + X (autonom).
+ */
+function stepTanks(tanks, p, dt) {
+    const g = MACRO.FLOW_GAIN;
+    const Y = tanks.Y;
+
+    const taxFlow = p.t * Y * g;
+    const consumeFlow = p.c * Y * g;
+    const saveFlow = p.s * Y * g;
+    const importFlow = p.m * Y * g;
+
+    const gFlow = p.G_rate * tanks.GovtTank * g;
+    const iFlow = p.I_rate * tanks.BankTank * g;
+    const xFlow = p.X * g;
+
+    const leak = taxFlow + consumeFlow + saveFlow + importFlow;
+    const inject = consumeFlow + gFlow + iFlow + xFlow;
+
+    tanks.GovtTank = Math.max(0, tanks.GovtTank + (taxFlow - gFlow) * dt);
+    tanks.BankTank = Math.max(0, tanks.BankTank + (saveFlow - iFlow) * dt);
+    tanks.ForeignTank += (importFlow - xFlow) * dt;
+    tanks.Y = Math.max(0.08, Math.min(0.98, Y + (inject - leak) * dt));
+
+    const S = saveFlow;
+    const T_flow = taxFlow;
+    const M_flow = importFlow;
+    const leakSide = S + T_flow + M_flow;
+    const injectSide = iFlow + gFlow + xFlow;
+    const equilGap = leakSide - injectSide;
+    const mult = 1 / Math.max(0.1, p.c + p.s + p.t + p.m);
+
+    return {
+        flows: {
+            C: consumeFlow,
+            T_flow,
+            S_flow: saveFlow,
+            M_flow,
+            gFlow,
+            iFlow,
+            xFlow,
+            taxFlow,
+            saveFlow,
+            importFlow,
+        },
+        equilGap,
+        mult,
+        inject,
+        leak,
+    };
 }
 
 function macroUnemployment(Y) {
@@ -106,21 +187,28 @@ function macroUnemployment(Y) {
     return MACRO.NAIRU * 100 + gap * MACRO.OKUN_COEF;
 }
 
-function macroInflation(Y, G) {
+function macroInflation(Y, gFlow) {
     const outputGap = (Y - MACRO.Y_POT) / MACRO.Y_POT;
     const demandPull = MACRO.PHILLIPS_COEF * outputGap;
-    const fiscal = MACRO.FISCAL_INFL_COEF * Math.max(0, G - 0.07);
+    const fiscal = MACRO.FISCAL_INFL_COEF * Math.max(0, gFlow - 0.04);
     return Math.max(0, MACRO.PI_TARGET + demandPull + fiscal);
 }
 
-function macroStatus(Y, eq, uPct) {
+function macroStatus(Y, equilGap, uPct, tanks, p) {
     const gap = (Y - MACRO.Y_POT) / MACRO.Y_POT;
-    const rateGap = Math.max(0, eq.rate - MACRO.R_NEUTRAL);
+    if (Math.abs(equilGap) < 0.015 && tanks.GovtTank > 0.02) {
+        return 'LIKEVEKT — S+T+M ≈ I+G+X';
+    }
     if (gap > 0.06) return 'SPICE-TSUNAMI — ØKOLOGISK GRENS';
-    if (Y < 0.32) return 'TØRKE — HARVESTER STANSET';
-    if (rateGap > 0.03 && eq.I < MACRO.I_BASE * 0.55) return 'SANDORM UROLIG — INVESTERING BREMSES';
+    if (Y < 0.2) return 'TØRKE — HARVESTER STANSET';
+    if (tanks.GovtTank < 0.02 && equilGap > 0.02) return 'STATSAPPARAT TØMT — G BREMSER';
+    if (tanks.BankTank < 0.02 && equilGap > 0.02) return 'SIETCH-TØMT — I BREMSER';
+    if (tanks.ForeignTank > 0.12) return 'IMPORTLEKKASJE — UTLAND FYLLER';
+    if (p?.normalized) return 'VENTILER > 100% — STRØMMER NORMALISERT';
     if (uPct > MACRO.NAIRU * 100 + 2.5) return 'SIETCH-TAPT KAPASITET';
-    return 'BALANSERT SPICE-SIRKULASJON';
+    if (equilGap > 0.03) return 'LEKKASJE > INJEKSJON — Y SINKER';
+    if (equilGap < -0.03) return 'INJEKSJON > LEKKASJE — Y STIGER';
+    return 'SIRKULASJON I BEVEGELSE';
 }
 
 function initMoniac() {
@@ -141,6 +229,8 @@ function initMoniac() {
         rate: document.getElementById('moniac-rate'),
         tax: document.getElementById('moniac-tax'),
         mpc: document.getElementById('moniac-mpc'),
+        save: document.getElementById('moniac-save'),
+        importLeaks: document.getElementById('moniac-import'),
     };
 
     const labels = {
@@ -148,19 +238,18 @@ function initMoniac() {
         rate: document.getElementById('moniac-rate-val'),
         tax: document.getElementById('moniac-tax-val'),
         mpc: document.getElementById('moniac-mpc-val'),
+        save: document.getElementById('moniac-save-val'),
+        importLeaks: document.getElementById('moniac-import-val'),
     };
 
-    const _initC = { gov: 0.35, rate: 0.045, tax: 0.28, mpc: 0.72 };
-    const _initEq = macroEquilibrium(_initC);
-    const _initF = macroFlows(_initEq.Y * 0.95, _initEq);
+    const _initC = { gov: 0.35, rate: 0.045, tax: 0.28, mpc: 0.48, save: 0.12, import: 0.22 };
+    const _initP = tankParams(_initC);
+    const tanks = createInitialTanks(_initP);
+    const _initStep = stepTanks(tanks, _initP, 0);
     const state = {
-        Y: _initEq.Y * 0.95,
-        C: _initF.C,
-        T: _initF.T_flow,
-        S: _initF.S_flow,
-        G: 0.35,
-        I: _initEq.I / MACRO.I_BASE,
-        P: 0.5,
+        tanks,
+        flows: _initStep.flows,
+        P: _initC.rate / 0.09,
     };
 
     const nodes = {};
@@ -329,15 +418,27 @@ function initMoniac() {
                 break;
             }
             case 'sietch': {
-                const dome = new THREE.Mesh(
-                    new THREE.SphereGeometry(1.1, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2),
-                    new THREE.MeshStandardMaterial({ color: SIETCH, roughness: 0.85 })
-                );
-                dome.position.y = -0.15;
-                group.add(dome);
                 const mound = new THREE.Mesh(new THREE.ConeGeometry(1.5, 0.5, 12), sandMat);
                 mound.position.y = -0.35;
                 group.add(mound);
+                const siloH = 1.65;
+                new THREE.TextureLoader().load(
+                    'images/moniac/silo.jpg',
+                    (tex) => {
+                        tex.colorSpace = THREE.SRGBColorSpace;
+                        const aspect = tex.image.width / Math.max(1, tex.image.height);
+                        const silo = new THREE.Mesh(
+                            new THREE.PlaneGeometry(aspect * siloH, siloH),
+                            new THREE.MeshBasicMaterial({
+                                map: tex,
+                                transparent: true,
+                                depthWrite: false,
+                            })
+                        );
+                        silo.position.set(0, siloH / 2 + 0.1, 0.45);
+                        group.add(silo);
+                    }
+                );
                 fill = createFill(def.color, 0.7, 0.6);
                 fill.position.y = 0.1;
                 portY = 0.5;
@@ -505,6 +606,8 @@ function initMoniac() {
             rate: Number(controls.rate.value) / 100,
             tax: Number(controls.tax.value) / 100,
             mpc: Number(controls.mpc.value) / 100,
+            save: Number(controls.save.value) / 100,
+            import: Number(controls.importLeaks.value) / 100,
         };
     }
 
@@ -513,24 +616,26 @@ function initMoniac() {
         labels.rate.textContent = Math.round((c.rate / 0.09) * 100) + '%';
         labels.tax.textContent = Math.round(c.tax * 100) + '%';
         labels.mpc.textContent = Math.round(c.mpc * 100) + '%';
+        labels.save.textContent = Math.round(c.save * 100) + '%';
+        labels.importLeaks.textContent = Math.round(c.import * 100) + '%';
     }
 
     function flowIntensity(flow, cap = 0.55) {
         return Math.min(cap, flow * 0.55);
     }
 
-    function computeFlows(c) {
-        const eq = macroEquilibrium(c);
-        const f = macroFlows(state.Y, eq);
-        const inject = eq.G + eq.I + eq.X;
+    function computeFlows(f) {
+        const inj = f.gFlow + f.iFlow + f.xFlow + f.C * 0.01;
+        const injSum = Math.max(0.02, inj);
         return {
-            'P-Y': flowIntensity(eq.X / inject),
-            gToY: flowIntensity(eq.G / inject),
-            iToY: flowIntensity(eq.I / inject),
+            'P-Y': flowIntensity(f.xFlow / injSum),
+            gToY: flowIntensity(f.gFlow / injSum),
+            iToY: flowIntensity(f.iFlow / injSum),
             yToC: flowIntensity(f.C),
-            yToT: flowIntensity(f.T_flow),
-            yToS: flowIntensity(f.S_flow + f.M_flow),
-            cToY: flowIntensity(f.C * eq.mult * 0.1),
+            yToT: flowIntensity(f.taxFlow),
+            yToS: flowIntensity(f.saveFlow),
+            yToM: flowIntensity(f.importFlow),
+            cToY: flowIntensity(f.C * 0.35),
         };
     }
 
@@ -544,39 +649,37 @@ function initMoniac() {
         'C-Y': 'cToY',
     };
 
-    function stepPhysics(c, dt) {
-        const eq = macroEquilibrium(c);
-        eq.rate = c.rate;
-        const targets = macroFlows(eq.Y, eq);
+    function stepPhysics(controls, dt) {
+        const p = tankParams(controls);
+        const step = stepTanks(state.tanks, p, dt);
+        const f = step.flows;
+        state.flows = f;
+
         const k = 1 - Math.pow(0.001, dt);
+        state.P += (controls.rate / 0.09 - state.P) * k;
 
-        state.Y += (eq.Y - state.Y) * k;
-        state.G += (c.gov - state.G) * k * 0.85;
-        state.I += (eq.I / MACRO.I_BASE - state.I) * k * 0.85;
-        state.T += (targets.T_flow - state.T) * k;
-        state.S += (targets.S_flow - state.S) * k;
-        state.C += (targets.C - state.C) * k;
-        state.P += (c.rate / 0.09 - state.P) * k;
+        const Y = state.tanks.Y;
+        const uPct = macroUnemployment(Y);
+        const infl = macroInflation(Y, f.gFlow);
 
-        const uPct = macroUnemployment(state.Y);
-        const infl = macroInflation(state.Y, eq.G);
-
-        if (hud.bnp) hud.bnp.textContent = String(Math.round(state.Y * 100)).padStart(3, '0');
-        if (hud.mult) hud.mult.textContent = '×' + eq.mult.toFixed(2);
+        if (hud.bnp) hud.bnp.textContent = String(Math.round(Y * 100)).padStart(3, '0');
+        if (hud.mult) hud.mult.textContent = '×' + step.mult.toFixed(2);
         if (hud.ledighet) hud.ledighet.textContent = uPct.toFixed(1) + '%';
         if (hud.inflasjon) hud.inflasjon.textContent = infl.toFixed(1) + '%';
-        if (hud.status) hud.status.textContent = macroStatus(state.Y, eq, uPct);
+        if (hud.status) {
+            hud.status.textContent = macroStatus(Y, step.equilGap, uPct, state.tanks, p);
+        }
 
-        setNodeLevel(nodes.Y, state.Y);
-        setNodeLevel(nodes.C, state.C / Math.max(0.2, eq.Y));
-        setNodeLevel(nodes.T, state.T / Math.max(0.15, eq.Y));
-        setNodeLevel(nodes.S, state.S / Math.max(0.15, eq.Y));
-        setNodeLevel(nodes.G, state.G);
-        setNodeLevel(nodes.I, Math.min(1, state.I));
+        setNodeLevel(nodes.Y, Y);
+        setNodeLevel(nodes.C, f.C / Math.max(0.08, Y * MACRO.FLOW_GAIN));
+        setNodeLevel(nodes.T, state.tanks.GovtTank / Math.max(0.12, Y));
+        setNodeLevel(nodes.S, state.tanks.BankTank / Math.max(0.1, Y * 0.5));
+        setNodeLevel(nodes.G, Math.min(1, state.tanks.GovtTank / 0.2));
+        setNodeLevel(nodes.I, Math.min(1, f.iFlow / 0.15));
         setNodeLevel(nodes.P, state.P);
 
-        spiceLight.intensity = 1.2 + state.Y * 2;
-        scene.fog.density = 0.024 + Math.max(0, (state.Y - MACRO.Y_POT) * 0.025);
+        spiceLight.intensity = 1.2 + Y * 2;
+        scene.fog.density = 0.024 + Math.max(0, (Y - MACRO.Y_POT) * 0.025);
 
         if (!reducedMotion && pumpGroup) {
             pumpGroup.rotation.y = Math.sin(performance.now() * 0.0004) * 0.06;
@@ -584,12 +687,12 @@ function initMoniac() {
 
         livingWorld?.update(dt, {
             pump: state.P,
-            invest: state.I,
-            spice: state.Y,
+            invest: p.I_rate,
+            spice: Y,
             camera,
         });
 
-        return computeFlows(c);
+        return computeFlows(f);
     }
 
     const flowGeo = new THREE.SphereGeometry(0.06, 6, 6);
@@ -700,19 +803,14 @@ function initMoniac() {
         controls.gov.value = 35;
         controls.rate.value = 4.5;
         controls.tax.value = 28;
-        controls.mpc.value = 72;
+        controls.mpc.value = 48;
+        controls.save.value = 12;
+        controls.importLeaks.value = 22;
         const c0 = readControls();
-        const eq0 = macroEquilibrium(c0);
-        const f0 = macroFlows(eq0.Y, eq0);
-        Object.assign(state, {
-            Y: eq0.Y * 0.95,
-            C: f0.C,
-            T: f0.T_flow,
-            S: f0.S_flow,
-            G: c0.gov,
-            I: eq0.I / MACRO.I_BASE,
-            P: c0.rate / 0.09,
-        });
+        const p0 = tankParams(c0);
+        state.tanks = createInitialTanks(p0);
+        state.flows = stepTanks(state.tanks, p0, 0).flows;
+        state.P = c0.rate / 0.09;
         flowParticles.forEach((p) => scene.remove(p.mesh));
         flowParticles = [];
         updateLabels(c0);
