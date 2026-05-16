@@ -30,10 +30,10 @@ const COLORS = {
 
 const NODE_DEFS = [
     { id: 'P', label: 'P', sub: 'HARVESTER · SANDORM', pos: [-5.2, 0, 0], color: COLORS.pump, type: 'pump' },
-    { id: 'G', label: 'G', sub: 'SARDAUKAR · HOFF', pos: [-3.4, 0, -2.6], color: COLORS.gov, type: 'imperial' },
-    { id: 'C', label: 'C', sub: 'GILDE · MENTAT · STILL', pos: [-3.4, 0, 2.6], color: COLORS.consume, type: 'guild' },
+    { id: 'G', label: 'G', sub: 'OFFENTLIG FORBRUK', pos: [-3.4, 0, -2.6], color: COLORS.gov, type: 'imperial' },
+    { id: 'C', label: 'C', sub: 'MPC', pos: [-3.4, 0, 2.6], color: COLORS.consume, type: 'guild' },
     { id: 'Y', label: 'Y', sub: 'TOTAL SPICE-HØST', pos: [0, 0, 0], color: COLORS.income, type: 'silo', hub: true },
-    { id: 'T', label: 'T', sub: 'CHOAM → KEISER', pos: [3.4, 0, -2.6], color: COLORS.tax, type: 'choam' },
+    { id: 'T', label: 'T', sub: 'SKATTESATS', pos: [3.4, 0, -2.6], color: COLORS.tax, type: 'choam' },
     { id: 'I', label: 'I', sub: 'HARVESTER · ORNITHOPTER', pos: [3.4, 0, 0.2], color: COLORS.invest, type: 'factory' },
     { id: 'S', label: 'S', sub: 'SIETCH · HUS-SKATT', pos: [3.4, 0, 2.6], color: COLORS.save, type: 'sietch' },
 ];
@@ -344,14 +344,30 @@ function initMoniac() {
                 break;
             }
             case 'imperial': {
-                [[-0.45, 0.35], [0.45, 0.35], [0, 0.75]].forEach(([x, h]) => {
-                    const b = new THREE.Mesh(
-                        new THREE.BoxGeometry(0.7, h, 0.6),
-                        new THREE.MeshStandardMaterial({ color: IMPERIAL, roughness: 0.7 })
-                    );
-                    b.position.set(x, h / 2, 0);
-                    group.add(b);
-                });
+                const portraitH = 1.55;
+                new THREE.TextureLoader().load(
+                    'images/moniac/emperor.webp',
+                    (tex) => {
+                        tex.colorSpace = THREE.SRGBColorSpace;
+                        const aspect = tex.image.width / Math.max(1, tex.image.height);
+                        const frame = new THREE.Mesh(
+                            new THREE.PlaneGeometry(aspect * portraitH, portraitH),
+                            new THREE.MeshBasicMaterial({
+                                map: tex,
+                                transparent: true,
+                                depthWrite: false,
+                            })
+                        );
+                        frame.position.set(0, portraitH / 2 + 0.15, 0.5);
+                        group.add(frame);
+                    }
+                );
+                const plinth = new THREE.Mesh(
+                    new THREE.BoxGeometry(1.35, 0.35, 0.85),
+                    new THREE.MeshStandardMaterial({ color: IMPERIAL, roughness: 0.75, metalness: 0.2 })
+                );
+                plinth.position.y = 0.18;
+                group.add(plinth);
                 fill = createFill(def.color, 0.45, 0.7);
                 fill.position.y = 0.25;
                 portY = 0.6;
