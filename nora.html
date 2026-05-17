@@ -31,23 +31,8 @@
     </header>
 
     <main id="nora">
-        <div class="nora-intro-grid">
-            <div class="section-label" id="sim">01 // SIMULATOR</div>
-            <div class="nora-intro-aside">
-                <div class="nora-scenario-bar">
-                    <button
-                        type="button"
-                        class="btn btn--scenario"
-                        id="nora-godzilla"
-                        title="Sokkelsjokk: lav olje-I, mindre GPFG, høy RP og krisepakke"
-                    >› Godzilla-Sjokk</button>
-                </div>
-                <p class="nora-scenario-note nora-scenario-note--intro">
-                    Godzilla angriper Troll-feltet — kollapser olje-I til fastland, strammer GPFG,
-                    øker risikopremie og utløser krisepakke.
-                </p>
-            </div>
-            <p class="nora-note">
+        <div class="section-label" id="sim">01 // SIMULATOR</div>
+        <p class="nora-note">
             <strong>NORA</strong> er en mikrofundert DSGE-modell for norsk finanspolitikk, utviklet ved
             <strong>Statistisk sentralbyrå (SSB)</strong> (Gundersen, Quaghebeur og Tretvoll, NOT 2024/4).
             Modellen beskriver en <strong>liten åpen økonomi</strong> med sterke handels- og finanskoblinger
@@ -64,7 +49,6 @@
             Simulatoren er en pedagogisk forkortelse — ikke offisiell NORA-kode.
             <a href="Nora/NOT2024-04.pdf" target="_blank" rel="noopener">NOT 2024/4 (PDF) ↗</a>
         </p>
-        </div>
 
         <div class="nora-wrap">
             <div class="nora-panel">
@@ -103,6 +87,20 @@
             </div>
 
             <aside class="nora-controls" aria-label="Styring av NORA-simulatoren">
+                <div class="nora-godzilla-block">
+                    <div class="nora-scenario-bar">
+                        <button
+                            type="button"
+                            class="btn btn--scenario"
+                            id="nora-godzilla"
+                            title="Sokkelsjokk: lav olje-I, mindre GPFG, høy RP og krisepakke"
+                        >› Godzilla-Sjokk</button>
+                    </div>
+                    <p class="nora-scenario-note">
+                        Godzilla angriper Troll-feltet — kollapser olje-I til fastland, strammer GPFG,
+                        øker risikopremie og utløser krisepakke.
+                    </p>
+                </div>
                 <div class="nora-mode-toggle">
                     <label class="nora-toggle">
                         <input type="checkbox" id="nora-frontfag" checked>
