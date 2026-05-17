@@ -38,9 +38,14 @@ const NORA_PARAMS = {
     quartersPerSecond: 3,
     yPot: 1,
     /** Realistisk KPI-bånd i simulatoren (årlig rate, desimal). */
-    piLo: -0.02,
-    piHi: 0.06,
+    piLo: -0.01,
+    piHi: 0.05,
 };
+
+/** Sikkerhetsnett — gamle økter / cache skal ikke kunne vise π over 5 %. */
+function clampPiAnnual(pi) {
+    return clamp(pi, NORA_PARAMS.piLo, NORA_PARAMS.piHi);
+}
 
 /** Phillips-slope κ = (1−ξ)(1−βξ)/ξ — mellomvarepriser (ξP, tab. 3.5). */
 function noraPhillipsKappa(beta = NORA_PARAMS.beta, xiP = NORA_PARAMS.xiP) {
@@ -358,7 +363,7 @@ function stepNora(state, ctrl, dt) {
     };
 
     const yNext = clamp(y + dy * dt, -0.2, 0.2);
-    const piNext = clamp(pi + dpi * dt, NORA_PARAMS.piLo, NORA_PARAMS.piHi);
+    const piNext = clampPiAnnual(pi + dpi * dt);
 
     if (!Number.isFinite(yNext) || !Number.isFinite(piNext)) {
         return stepNora(
@@ -1292,8 +1297,8 @@ function initNora() {
     }
 
     function pushHistory() {
-        history.y.push(derived.y);
-        history.pi.push(derived.pi);
+        history.y.push(derived.y * 100);
+        history.pi.push(clampPiAnnual(derived.pi) * 100);
         history.c.push(derived.flows.cAgg);
         history.q.push(modelQuarter);
         const max = NORA_PARAMS.historyQuarters;
@@ -1306,8 +1311,8 @@ function initNora() {
         derived = stepNora(state, ctrl, NORA_PARAMS.quarterDt);
         state = {
             y: derived.y,
-            pi: derived.pi,
-            piPrev: derived.piPrev ?? derived.pi,
+            pi: clampPiAnnual(derived.pi),
+            piPrev: clampPiAnnual(derived.piPrev ?? derived.pi),
             L: derived.L,
             D: derived.D,
             F: derived.F,
@@ -1328,7 +1333,10 @@ function initNora() {
         syncFrontfagUi(ctrl);
         syncPiTargetUi(ctrl);
         if (hud.y) hud.y.textContent = `${(derived.y * 100).toFixed(1)}%`;
-        if (hud.pi) hud.pi.textContent = `${(derived.pi * 100).toFixed(2)}%`;
+        if (hud.pi) {
+            const piShow = clampPiAnnual(derived.pi) * 100;
+            hud.pi.textContent = `${piShow.toFixed(2)}%`;
+        }
         if (hud.w) hud.w.textContent = `${(derived.W * 100).toFixed(1)}`;
         if (hud.u) hud.u.textContent = `${(derived.u * 100).toFixed(1)}%`;
         if (hud.mode) hud.mode.textContent = ctrl.frontfag ? 'Frontfag' : 'Fleksibel';
@@ -1378,8 +1386,8 @@ function initNora() {
         ctx.textAlign = 'left';
 
         const all = [...history.y, ...history.pi].filter(Number.isFinite);
-        let minV = Math.min(...all, -0.06);
-        let maxV = Math.max(...all, 0.06);
+        let minV = Math.min(...all, -8);
+        let maxV = Math.max(...all, 8);
         const vPad = (maxV - minV) * 0.15 || 0.04;
         minV -= vPad;
         maxV += vPad;
@@ -1405,7 +1413,7 @@ function initNora() {
 
         ctx.fillStyle = NORA_COLORS.muted;
         ctx.font = '10px "Share Tech Mono", monospace';
-        ctx.fillText('y (gap) · π', x0, y0 + 4);
+        ctx.fillText('y gap · π (%)', x0, y0 + 4);
         ctx.textAlign = 'center';
         ctx.fillText('kvartaler →', plotX0 + plotW / 2, y0 + ch - 2);
         ctx.textAlign = 'left';
