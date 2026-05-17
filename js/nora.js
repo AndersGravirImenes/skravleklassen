@@ -18,13 +18,17 @@ const NORA_COLORS = {
     boxBorder: 'rgba(94, 184, 232, 0.45)',
 };
 
-/** Estimerte Taylor-koeffisienter (tab. 3.2, NOT 2024/4) */
+/**
+ * Strukturparametre fra SSB NORA (NOT 2024/4, tab. 3.5) + avledet Phillips-slope.
+ * β, ξP, ωInd, ρR, ψπ, ψY — posteriormodus / mean der angitt.
+ */
 const NORA_PARAMS = {
-    beta: 0.99,
-    kappa: 0.28,
+    beta: 0.9973,
+    xiP: 0.82,
+    omegaInd: 0.14,
     psiPi: 1.59,
-    psiY: 0.12,
-    rhoR: 0.8,
+    psiY: 0.11,
+    rhoR: 0.9,
     sigmaIS: 0.75,
     nairu: 0.038,
     /** Tidsserie: vindu 0…40 kvartaler (som fig. 4.1). */
@@ -33,7 +37,15 @@ const NORA_PARAMS = {
     /** Simuleringshastighet — kvartaler per sekund (uavhengig av FPS). */
     quartersPerSecond: 3,
     yPot: 1,
+    /** Realistisk KPI-bånd i simulatoren (årlig rate, desimal). */
+    piLo: -0.02,
+    piHi: 0.06,
 };
+
+/** Phillips-slope κ = (1−ξ)(1−βξ)/ξ — mellomvarepriser (ξP, tab. 3.5). */
+function noraPhillipsKappa(beta = NORA_PARAMS.beta, xiP = NORA_PARAMS.xiP) {
+    return ((1 - xiP) * (1 - beta * xiP)) / xiP;
+}
 
 /** Backe-sjokket — eksogent pengepolitisk sjokk Z^R (NOT § 4.1.1; θ_R ≈ 0,41) */
 const NORA_BACKE_SHOCK = {
@@ -107,6 +119,24 @@ const NORA_SLIDER_DEFAULTS = {
     wageStick: 75,
     wageShock: 0,
 };
+
+/** Aggregert finanspolitikk ved standard-glidebrytere (kun avvik gir etterspørselssjokk). */
+function noraFiscalAggregate(ctrl) {
+    const gShare = ctrl.govG / 100;
+    const giShare = ctrl.govI / 100;
+    const gpfgSpend = (ctrl.gpfgRule / 100) * 0.16;
+    const fiscalShock = ctrl.fiscalShock / 100;
+    return gShare * 0.32 + giShare * 0.22 + gpfgSpend + fiscalShock * 0.25;
+}
+
+function noraFiscalSteadyState() {
+    return noraFiscalAggregate({
+        govG: NORA_SLIDER_DEFAULTS.govG,
+        govI: NORA_SLIDER_DEFAULTS.govI,
+        gpfgRule: NORA_SLIDER_DEFAULTS.gpfgRule,
+        fiscalShock: NORA_SLIDER_DEFAULTS.fiscalShock,
+    });
+}
 
 /** π-avvik i Taylor-regelen: punktmål eller kun utenfor 1–3 %. */
 function taylorInflationGap(pi, ctrl) {
@@ -221,7 +251,7 @@ function stepNora(state, ctrl, dt) {
     const fiscalShock = ctrl.fiscalShock / 100;
     const rpShock = ctrl.foreignRp / 100;
 
-    const { y, pi, L, D, F, Gb, Rprev, W, E, Lf, zR = 0, rer = 0 } = state;
+    const { y, pi, piPrev = pi, L, D, F, Gb, Rprev, W, E, Lf, zR = 0, rer = 0 } = state;
 
     const piGapTaylor = taylorInflationGap(pi, ctrl);
     const piGapPhillips = phillipsInflationGap(pi, ctrl);
@@ -237,7 +267,10 @@ function stepNora(state, ctrl, dt) {
     const rerNew = clamp(rer + (0.95 * (Rnew - rTarget) + 0.28 * zR - 0.14 * rer) * dt, -0.06, 0.06);
 
     const gpfgSpend = gpfg * 0.16;
-    const fiscal = gShare * 0.32 + giShare * 0.22 + gpfgSpend + fiscalShock * 0.25;
+    const fiscal = noraFiscalAggregate(ctrl);
+    const fiscalImpulse = fiscal - noraFiscalSteadyState();
+    const oilSs = NORA_SLIDER_DEFAULTS.oilShock / 100;
+    const oilImpulse = oilInv - oilSs;
     const rp = 0.02 + rpShock * 0.04 - oilInv * 0.004;
 
     const Y = NORA_PARAMS.yPot * (1 + y);
@@ -247,26 +280,29 @@ function stepNora(state, ctrl, dt) {
     const labor = stepLaborMarket({ W, E, Lf }, ctrl, { y, mfg, Y }, dt);
     const empGap = labor.E / LABOR.E_ss - 1;
     const laborDy = ctrl.frontfag ? 0.22 * empGap - 0.08 * (labor.W - 1) : 0;
-    const laborDpi = ctrl.frontfag ? 0.1 * (labor.W - 1) + 0.06 * empGap : 0;
+    const laborDpi = ctrl.frontfag ? 0.022 * (labor.W - 1) + 0.014 * empGap : 0;
 
     const dy =
         -NORA_PARAMS.sigmaIS * (Rnew - rTarget) -
         0.42 * zR -
         0.18 * rer +
-        fiscal * 0.38 +
-        oilInv * 0.08 -
+        fiscalImpulse * 0.38 +
+        oilImpulse * 0.08 -
         rp * 1.8 * F -
         0.12 * yGap +
         laborDy;
 
+    const beta = NORA_PARAMS.beta;
+    const kappaQ = noraPhillipsKappa();
     const dpi =
-        NORA_PARAMS.kappa * yGap +
-        fiscal * 0.018 +
-        fiscalShock * 0.025 -
-        (1 - NORA_PARAMS.beta) * piGapPhillips +
-        laborDpi -
-        0.08 * rer -
-        0.035 * zR;
+        dt > 0
+            ? kappaQ * yGap +
+              (NORA_PARAMS.omegaInd / dt) * (piPrev - pi) -
+              (1 - beta) * piGapPhillips +
+              laborDpi -
+              0.05 * rer -
+              0.025 * zR
+            : 0;
 
     const wageBill = labor.wageBill;
     const transfers = gShare * 0.1 + gpfgSpend * 0.4;
@@ -322,13 +358,14 @@ function stepNora(state, ctrl, dt) {
     };
 
     const yNext = clamp(y + dy * dt, -0.2, 0.2);
-    const piNext = clamp(pi + dpi * dt, -0.01, 0.1);
+    const piNext = clamp(pi + dpi * dt, NORA_PARAMS.piLo, NORA_PARAMS.piHi);
 
     if (!Number.isFinite(yNext) || !Number.isFinite(piNext)) {
         return stepNora(
             {
                 y: 0,
                 pi: ctrl.piBand ? PI_BAND.mid : Math.max(0.005, ctrl.piTarget / 100),
+                piPrev: ctrl.piBand ? PI_BAND.mid : Math.max(0.005, ctrl.piTarget / 100),
                 L: 0.55,
                 D: 0.45,
                 F: 0.35,
@@ -348,6 +385,7 @@ function stepNora(state, ctrl, dt) {
     return {
         y: yNext,
         pi: piNext,
+        piPrev: pi,
         L: clamp(L + dL, 0.1, 1.4),
         D: clamp(D + dD, 0.1, 1.2),
         F: clamp(F + dF, 0, 1.2),
@@ -383,6 +421,7 @@ function noraSteadyState(ctrl) {
     const base = {
         y: 0,
         pi: piSs,
+        piPrev: piSs,
         L: 0.55,
         D: 0.45,
         F: 0.35,
@@ -467,7 +506,12 @@ function simulateMonetaryPolicyIrF(_ctrl) {
         const rNext = rPp * 0.86 + z * 100 * 0.22;
         const rerNext = rer * 0.72 + 0.38 * z + 0.12 * (rPp / 100);
         const yNext = y * 0.81 - 0.24 * z - 0.12 * rer - 0.07 * (rPp / 100);
-        const piNext = pi * 0.86 + 0.11 * yNext - 0.17 * rerNext - 0.07 * z;
+        const piNext =
+            NORA_PARAMS.omegaInd * pi +
+            (1 - NORA_PARAMS.omegaInd) * (NORA_PARAMS.beta * pi + noraPhillipsKappa() * yNext) -
+            (1 - NORA_PARAMS.beta) * pi -
+            0.17 * rerNext -
+            0.07 * z;
         const cNext = c * 0.83 - 0.14 * z - 0.08 * (rPp / 100) + 0.05 * yNext;
         const iNext = i * 0.78 - 0.42 * z - 0.2 * (rPp / 100);
         const xNext = x * 0.7 - 0.22 * rerNext + 0.04 * yNext;
@@ -1086,6 +1130,7 @@ function initNora() {
     const defaults = {
         y: 0,
         pi: 0.02,
+        piPrev: 0.02,
         L: 0.55,
         D: 0.45,
         F: 0.35,
@@ -1170,6 +1215,7 @@ function initNora() {
         state = {
             ...defaults,
             pi: ss.piSs,
+            piPrev: ss.piSs,
             Rprev: ss.rSs + NORA_BACKE_SHOCK.sizePp,
             zR: NORA_BACKE_SHOCK.sizePp,
             rer: 0.018,
@@ -1197,6 +1243,7 @@ function initNora() {
             ...defaults,
             y: -0.035,
             pi: 0.024,
+            piPrev: 0.024,
             Rprev: GODZILLA_TROLL_SHOCK.policyRate / 1000,
         };
         derived = stepNora(state, readControls(), 0);
@@ -1260,6 +1307,7 @@ function initNora() {
         state = {
             y: derived.y,
             pi: derived.pi,
+            piPrev: derived.piPrev ?? derived.pi,
             L: derived.L,
             D: derived.D,
             F: derived.F,
