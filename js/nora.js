@@ -34,6 +34,20 @@ const NORA_PARAMS = {
 /** Inflasjonsmål som intervall (Norges Bank / KPI-bånd, forenklet) */
 const PI_BAND = { lo: 0.01, hi: 0.03, mid: 0.02 };
 
+/** Pedagogisk sokkelsjokk — Godzilla ved Troll-feltet (glidebryterverdier 0–100). */
+const GODZILLA_TROLL_SHOCK = {
+    oilShock: 8,
+    gpfgRule: 18,
+    fiscalShock: 62,
+    foreignRp: 60,
+    policyRate: 32,
+    govG: 28,
+    govI: 14,
+    omegaShare: 38,
+    wageStick: 75,
+    wageShock: 0,
+};
+
 /** π-avvik i Taylor-regelen: punktmål eller kun utenfor 1–3 %. */
 function taylorInflationGap(pi, ctrl) {
     if (ctrl.piBand) {
@@ -284,11 +298,16 @@ function stepNora(state, ctrl, dt) {
 }
 
 function noraStatus(derived, ctrl) {
+    if (ctrl.scenarioGodzilla) {
+        if (derived.y < -0.04) return 'GODZILLA / TROLL — FASTLAND I RESSESJON (SOKKEL-SJOKK)';
+        if (derived.u > NORA_PARAMS.nairu + 0.02) return 'GODZILLA / TROLL — LEDIGHET STIGER (LEVERANDØRER)';
+        return 'GODZILLA / TROLL — SOKKEL-SJOKK · KRISEPAKKE · HØY RP';
+    }
     if (!ctrl.frontfag) return 'FLEKSIBEL LØNN — LEDIGHET FØLGER BNP (UTEN FRONTFAG)';
     if (derived.W > 1.04 && derived.u > NORA_PARAMS.nairu + 0.015) {
         return 'FRONTFAG-SPENNING — HØY LØNN OG LEDIGHET';
     }
-    if (derived.oilShock > 70) return 'HØY OLJE-I — ETTERSPØRSEL ETTER FASTLANDS-VARER';
+    if (ctrl.oilShock > 70) return 'HØY OLJE-I — ETTERSPØRSEL ETTER FASTLANDS-VARER';
     if (ctrl.piBand) {
         if (derived.pi > PI_BAND.hi + 0.005) return 'KPI OVER 3 % — SENTRALBANK STRAMMER';
         if (derived.pi < PI_BAND.lo - 0.003) return 'KPI UNDER 1 % — RENTE SENKES';
@@ -577,6 +596,8 @@ function initNora() {
         mode: document.getElementById('nora-mode'),
     };
 
+    let scenarioGodzilla = false;
+
     const sliders = {
         omegaShare: bindSlider('nora-omega', 'nora-omega-val', (v) => `${v}%`),
         policyRate: bindSlider('nora-rate', 'nora-rate-val', (v) => `${(v / 10).toFixed(1)}%`),
@@ -599,10 +620,44 @@ function initNora() {
         syncPiTargetUi(readControls());
     });
 
+    function setSliderValue(slider, value) {
+        if (slider?.set) slider.set(value);
+    }
+
+    function applyGodzillaTrollShock() {
+        setSliderValue(sliders.oilShock, GODZILLA_TROLL_SHOCK.oilShock);
+        setSliderValue(sliders.gpfgRule, GODZILLA_TROLL_SHOCK.gpfgRule);
+        setSliderValue(sliders.fiscalShock, GODZILLA_TROLL_SHOCK.fiscalShock);
+        setSliderValue(sliders.foreignRp, GODZILLA_TROLL_SHOCK.foreignRp);
+        setSliderValue(sliders.policyRate, GODZILLA_TROLL_SHOCK.policyRate);
+        setSliderValue(sliders.govG, GODZILLA_TROLL_SHOCK.govG);
+        setSliderValue(sliders.govI, GODZILLA_TROLL_SHOCK.govI);
+        setSliderValue(sliders.omegaShare, GODZILLA_TROLL_SHOCK.omegaShare);
+        setSliderValue(sliders.wageStick, GODZILLA_TROLL_SHOCK.wageStick);
+        setSliderValue(sliders.wageShock, GODZILLA_TROLL_SHOCK.wageShock);
+        scenarioGodzilla = true;
+        state = {
+            ...defaults,
+            y: -0.035,
+            pi: 0.024,
+            Rprev: GODZILLA_TROLL_SHOCK.policyRate / 1000,
+        };
+        derived = stepNora(state, readControls(), 0);
+        for (const key of Object.keys(history)) history[key].length = 0;
+        pushHistory();
+        updateHud();
+        draw();
+        if (!running) {
+            running = true;
+            startLoop();
+        }
+    }
+
     function readControls() {
         return {
             frontfag: Boolean(frontfagToggle?.checked),
             piBand: Boolean(piBandToggle?.checked),
+            scenarioGodzilla,
             omegaShare: sliders.omegaShare.value,
             policyRate: sliders.policyRate.value / 10,
             piTarget: sliders.piTarget.value / 10,
@@ -844,7 +899,10 @@ function initNora() {
         }
     }
 
+    document.getElementById('nora-godzilla')?.addEventListener('click', applyGodzillaTrollShock);
+
     document.getElementById('nora-reset')?.addEventListener('click', () => {
+        scenarioGodzilla = false;
         state = { ...defaults };
         derived = stepNora(state, readControls(), 0);
         for (const key of Object.keys(history)) history[key].length = 0;
@@ -912,6 +970,11 @@ function bindSlider(id, labelId, fmt) {
     el.addEventListener('input', update);
     el.addEventListener('change', update);
     update();
+    obj.set = (v) => {
+        el.value = String(v);
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        update();
+    };
     return obj;
 }
 
