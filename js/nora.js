@@ -27,7 +27,11 @@ const NORA_PARAMS = {
     rhoR: 0.8,
     sigmaIS: 0.75,
     nairu: 0.038,
-    historyLen: 100,
+    /** Tidsserie: vindu 0…40 kvartaler (som fig. 4.1). */
+    historyQuarters: 41,
+    quarterDt: 0.25,
+    /** Simuleringshastighet — kvartaler per sekund (uavhengig av FPS). */
+    quartersPerSecond: 3,
     yPot: 1,
 };
 
@@ -56,6 +60,24 @@ const IRF_MP_SERIES = [
 
 /** Inflasjonsmål som intervall (Norges Bank / KPI-bånd, forenklet) */
 const PI_BAND = { lo: 0.01, hi: 0.03, mid: 0.02 };
+
+/**
+ * Backe-sjokket — glidebrytere ved eksogent pengepolitisk stramming (+1 pp rente, NOT § 4.1.1).
+ * policyRate: 45 → 55 tilsvarer 4,5 % → 5,5 % (verdi / 10).
+ */
+const BACKE_SHOCK = {
+    omegaShare: 38,
+    policyRate: 55,
+    piTarget: 20,
+    govG: 22,
+    govI: 12,
+    oilShock: 50,
+    gpfgRule: 35,
+    fiscalShock: 0,
+    foreignRp: 22,
+    wageStick: 75,
+    wageShock: 0,
+};
 
 /** Pedagogisk sokkelsjokk — Godzilla ved Troll-feltet (glidebryterverdier 0–100). */
 const GODZILLA_TROLL_SHOCK = {
@@ -472,12 +494,32 @@ function simulateMonetaryPolicyIrF(_ctrl) {
     return paths;
 }
 
+function formatIrFTick(v) {
+    const a = Math.abs(v);
+    if (a >= 10) return v.toFixed(0);
+    if (a >= 1) return v.toFixed(1);
+    return v.toFixed(2);
+}
+
+/** Y-ticks som inkluderer 0 når responsen krysser likevekt. */
+function irfYTicks(minV, maxV) {
+    const ticks = new Set();
+    if (minV <= 0 && maxV >= 0) ticks.add(0);
+    ticks.add(minV);
+    ticks.add(maxV);
+    const mid = (minV + maxV) / 2;
+    if (mid !== minV && mid !== maxV && mid !== 0) ticks.add(mid);
+    return [...ticks].sort((a, b) => a - b);
+}
+
 function drawIrFMiniChart(ctx, w, h, series, paths) {
-    const pad = { l: 28, r: 4, t: 16, b: 14 };
+    const pad = { l: 40, r: 6, t: 18, b: 22 };
     const cw = w - pad.l - pad.r;
     const ch = h - pad.t - pad.b;
     const data = paths[series.key];
     if (!data?.length) return;
+
+    const qMax = NORA_BACKE_SHOCK.irfQuarters;
 
     ctx.clearRect(0, 0, w, h);
     ctx.fillStyle = 'rgba(8, 18, 28, 0.95)';
@@ -489,26 +531,46 @@ function drawIrFMiniChart(ctx, w, h, series, paths) {
         minV -= 0.5;
         maxV += 0.5;
     }
-    const margin = (maxV - minV) * 0.12 || 0.25;
+    const margin = (maxV - minV) * 0.1 || 0.2;
     minV -= margin;
     maxV += margin;
     const range = maxV - minV || 1;
     const mapY = (v) => pad.t + ch - ((v - minV) / range) * ch;
-    const mapX = (i) => pad.l + (i / (data.length - 1)) * cw;
+    const mapX = (q) => pad.l + (q / qMax) * cw;
 
+    ctx.font = '7px "Share Tech Mono", monospace';
+    ctx.fillStyle = NORA_COLORS.muted;
     ctx.strokeStyle = 'rgba(143, 212, 255, 0.1)';
     ctx.lineWidth = 1;
-    for (let g = 0; g <= 2; g++) {
-        const gy = pad.t + (ch * g) / 2;
+
+    irfYTicks(minV, maxV).forEach((tick) => {
+        const gy = mapY(tick);
+        if (gy < pad.t - 2 || gy > pad.t + ch + 2) return;
         ctx.beginPath();
         ctx.moveTo(pad.l, gy);
         ctx.lineTo(pad.l + cw, gy);
         ctx.stroke();
+        ctx.textAlign = 'right';
+        ctx.fillText(formatIrFTick(tick), pad.l - 3, gy + 3);
+    });
+    ctx.textAlign = 'left';
+
+    for (let q = 0; q <= qMax; q += 10) {
+        const x = mapX(q);
+        ctx.strokeStyle = 'rgba(143, 212, 255, 0.08)';
+        ctx.beginPath();
+        ctx.moveTo(x, pad.t);
+        ctx.lineTo(x, pad.t + ch);
+        ctx.stroke();
+        ctx.fillStyle = NORA_COLORS.muted;
+        ctx.textAlign = 'center';
+        ctx.fillText(String(q), x, pad.t + ch + 12);
     }
+    ctx.textAlign = 'left';
 
     const zeroY = mapY(0);
     if (zeroY >= pad.t && zeroY <= pad.t + ch) {
-        ctx.strokeStyle = 'rgba(180, 210, 230, 0.25)';
+        ctx.strokeStyle = 'rgba(180, 210, 230, 0.3)';
         ctx.setLineDash([3, 3]);
         ctx.beginPath();
         ctx.moveTo(pad.l, zeroY);
@@ -530,11 +592,13 @@ function drawIrFMiniChart(ctx, w, h, series, paths) {
 
     ctx.fillStyle = NORA_COLORS.text;
     ctx.font = '600 10px Rajdhani, sans-serif';
-    ctx.fillText(series.label, pad.l, 11);
+    ctx.fillText(series.label, pad.l, 12);
     ctx.fillStyle = NORA_COLORS.muted;
-    ctx.font = '8px "Share Tech Mono", monospace';
+    ctx.font = '7px "Share Tech Mono", monospace';
     const unitLbl = series.unit === 'pp' ? 'pp' : '%';
-    ctx.fillText(unitLbl, pad.l + cw - 14, 11);
+    ctx.textAlign = 'right';
+    ctx.fillText(unitLbl, pad.l + cw, 12);
+    ctx.textAlign = 'left';
 }
 
 function openBackeIrFPanel(paths) {
@@ -579,15 +643,15 @@ function openBackeIrFPanel(paths) {
         const cell = document.createElement('div');
         cell.className = 'nora-irf-mp__cell';
         const canvas = document.createElement('canvas');
-        canvas.width = 280 * dpr;
-        canvas.height = 120 * dpr;
+        canvas.width = 300 * dpr;
+        canvas.height = 136 * dpr;
         canvas.style.width = '100%';
         canvas.style.height = 'auto';
         cell.appendChild(canvas);
         grid.appendChild(cell);
         const ctx = canvas.getContext('2d');
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        drawIrFMiniChart(ctx, 280, 120, series, paths);
+        drawIrFMiniChart(ctx, 300, 136, series, paths);
     });
 
     const close = () => {
@@ -1035,7 +1099,9 @@ function initNora() {
     };
     let state = { ...defaults };
     let derived = stepNora(state, readControls(), 0);
-    const history = { y: [], pi: [], c: [] };
+    let modelQuarter = 0;
+    let quarterAccum = 0;
+    const history = { y: [], pi: [], c: [], q: [] };
 
     function captureControlDefaults() {
         if (frontfagToggle) frontfagToggle.defaultChecked = true;
@@ -1053,6 +1119,8 @@ function initNora() {
     function resetSimulationState() {
         state = { ...defaults };
         derived = stepNora(state, readControls(), 0);
+        modelQuarter = 0;
+        quarterAccum = 0;
         for (const key of Object.keys(history)) history[key].length = 0;
         pushHistory();
         syncFrontfagUi(readControls());
@@ -1090,7 +1158,11 @@ function initNora() {
     function applyBackeShock() {
         scenarioGodzilla = false;
         scenarioBacke = true;
-        applySliderDefaults(NORA_SLIDER_DEFAULTS);
+        applySliderDefaults(BACKE_SHOCK);
+        refreshAllSliderLabels();
+        for (const s of Object.values(sliders)) {
+            if (s.el) forceRangeRepaint(s.el);
+        }
         const ctrl = readControls();
         const paths = simulateMonetaryPolicyIrF(ctrl);
         openBackeIrFPanel(paths);
@@ -1103,6 +1175,8 @@ function initNora() {
             rer: 0.018,
         };
         derived = stepNora(state, ctrl, 0);
+        modelQuarter = 0;
+        quarterAccum = 0;
         for (const key of Object.keys(history)) history[key].length = 0;
         pushHistory();
         syncFrontfagUi(ctrl);
@@ -1126,6 +1200,8 @@ function initNora() {
             Rprev: GODZILLA_TROLL_SHOCK.policyRate / 1000,
         };
         derived = stepNora(state, readControls(), 0);
+        modelQuarter = 0;
+        quarterAccum = 0;
         for (const key of Object.keys(history)) history[key].length = 0;
         pushHistory();
         syncFrontfagUi(readControls());
@@ -1172,10 +1248,31 @@ function initNora() {
         history.y.push(derived.y);
         history.pi.push(derived.pi);
         history.c.push(derived.flows.cAgg);
-        const max = NORA_PARAMS.historyLen;
+        history.q.push(modelQuarter);
+        const max = NORA_PARAMS.historyQuarters;
         for (const key of Object.keys(history)) {
             if (history[key].length > max) history[key].shift();
         }
+    }
+
+    function advanceOneQuarter(ctrl) {
+        derived = stepNora(state, ctrl, NORA_PARAMS.quarterDt);
+        state = {
+            y: derived.y,
+            pi: derived.pi,
+            L: derived.L,
+            D: derived.D,
+            F: derived.F,
+            Gb: derived.Gb,
+            Rprev: derived.Rprev,
+            W: derived.W,
+            E: derived.E,
+            Lf: derived.Lf,
+            zR: derived.zR,
+            rer: derived.rer,
+        };
+        modelQuarter += 1;
+        pushHistory();
     }
 
     function updateHud() {
@@ -1192,36 +1289,65 @@ function initNora() {
     }
 
     function drawChart(x0, y0, cw, ch) {
+        const axis = { l: 38, r: 6, t: 16, b: 24 };
+        const plotW = cw - axis.l - axis.r;
+        const plotH = ch - axis.t - axis.b;
+        const plotX0 = x0 + axis.l;
+        const plotY0 = y0 + axis.t;
+
+        const n = history.y.length;
+        if (n < 2 || plotW < 20 || plotH < 20) return;
+
+        const qMin = history.q[0];
+        const qMax = history.q[n - 1];
+        const qSpan = Math.max(1, qMax - qMin);
+        const mapX = (q) => plotX0 + ((q - qMin) / qSpan) * plotW;
+
         ctx.strokeStyle = NORA_COLORS.grid;
         for (let i = 0; i <= 4; i++) {
-            const gy = y0 + (ch * i) / 4;
+            const gy = plotY0 + (plotH * i) / 4;
             ctx.beginPath();
-            ctx.moveTo(x0, gy);
-            ctx.lineTo(x0 + cw, gy);
+            ctx.moveTo(plotX0, gy);
+            ctx.lineTo(plotX0 + plotW, gy);
             ctx.stroke();
         }
 
+        const tickStep = qSpan > 25 ? 10 : qSpan > 12 ? 5 : 2;
+        const qTickStart = Math.ceil(qMin / tickStep) * tickStep;
+        ctx.fillStyle = NORA_COLORS.muted;
+        ctx.font = '9px "Share Tech Mono", monospace';
+        for (let t = qTickStart; t <= qMax; t += tickStep) {
+            const tx = mapX(t);
+            ctx.strokeStyle = 'rgba(143, 212, 255, 0.08)';
+            ctx.beginPath();
+            ctx.moveTo(tx, plotY0);
+            ctx.lineTo(tx, plotY0 + plotH);
+            ctx.stroke();
+            ctx.fillStyle = NORA_COLORS.muted;
+            ctx.textAlign = 'center';
+            ctx.fillText(String(t), tx, plotY0 + plotH + 14);
+        }
+        ctx.textAlign = 'left';
+
         const all = [...history.y, ...history.pi].filter(Number.isFinite);
-        if (all.length < 2) return;
         let minV = Math.min(...all, -0.06);
         let maxV = Math.max(...all, 0.06);
-        const pad = (maxV - minV) * 0.15 || 0.04;
-        minV -= pad;
-        maxV += pad;
+        const vPad = (maxV - minV) * 0.15 || 0.04;
+        minV -= vPad;
+        maxV += vPad;
         const range = maxV - minV || 1;
-        const mapY = (v) => y0 + ch - ((v - minV) / range) * ch;
+        const mapY = (v) => plotY0 + plotH - ((v - minV) / range) * plotH;
 
         const series = [
             [history.y, NORA_COLORS.mainlandBright],
             [history.pi, NORA_COLORS.fiscalBright],
         ];
         series.forEach(([arr, color]) => {
-            if (arr.length < 2) return;
             ctx.strokeStyle = color;
             ctx.lineWidth = 2;
             ctx.beginPath();
             arr.forEach((v, i) => {
-                const x = x0 + (i / (NORA_PARAMS.historyLen - 1)) * cw;
+                const x = mapX(history.q[i]);
                 const y = mapY(v);
                 if (i === 0) ctx.moveTo(x, y);
                 else ctx.lineTo(x, y);
@@ -1231,7 +1357,10 @@ function initNora() {
 
         ctx.fillStyle = NORA_COLORS.muted;
         ctx.font = '10px "Share Tech Mono", monospace';
-        ctx.fillText('y (gap) · π', x0, y0 - 6);
+        ctx.fillText('y (gap) · π', x0, y0 + 4);
+        ctx.textAlign = 'center';
+        ctx.fillText('kvartaler →', plotX0 + plotW / 2, y0 + ch - 2);
+        ctx.textAlign = 'left';
     }
 
     function drawSectors(x0, y0, sw, sh) {
@@ -1274,28 +1403,17 @@ function initNora() {
         }
     }
 
-    function tick(dt) {
+    function tick(wallDt) {
         const ctrl = readControls();
-        const steps = reducedMotion ? 1 : 3;
-        const subDt = dt / steps;
-        for (let i = 0; i < steps; i++) {
-            derived = stepNora(state, ctrl, subDt);
-            state = {
-                y: derived.y,
-                pi: derived.pi,
-                L: derived.L,
-                D: derived.D,
-                F: derived.F,
-                Gb: derived.Gb,
-                Rprev: derived.Rprev,
-                W: derived.W,
-                E: derived.E,
-                Lf: derived.Lf,
-                zR: derived.zR,
-                rer: derived.rer,
-            };
+        const qps =
+            NORA_PARAMS.quartersPerSecond * (reducedMotion ? 0.45 : 1);
+        quarterAccum += wallDt * qps;
+        let steps = 0;
+        while (quarterAccum >= 1 && steps < 8) {
+            quarterAccum -= 1;
+            advanceOneQuarter(ctrl);
+            steps += 1;
         }
-        pushHistory();
         updateHud();
         draw();
     }
