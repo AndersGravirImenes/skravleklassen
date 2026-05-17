@@ -596,6 +596,17 @@ function clampRangeInput(el, raw) {
     return n;
 }
 
+/** Tving nettleseren til å tegne glidebryter-tommel på nytt (WebKit/Edge). */
+function forceRangeRepaint(el) {
+    if (!el || el.type !== 'range') return;
+    const v = el.value;
+    el.type = 'text';
+    el.type = 'range';
+    el.value = v;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
 function initNora() {
     const section = document.getElementById('nora');
     const canvas = document.getElementById('nora-canvas');
@@ -608,6 +619,7 @@ function initNora() {
     const piTargetControl = q('nora-pi-target-control');
     const piTargetInput = q('nora-pi-target');
     const piTargetValEl = q('nora-pi-target-val');
+    const controlsForm = q('nora-controls-form');
     if (!section || !canvas) return;
 
     let diagramSvg = null;
@@ -716,17 +728,20 @@ function initNora() {
     let derived = stepNora(state, readControls(), 0);
     const history = { y: [], pi: [], c: [] };
 
-    function applySliderDefaults(values) {
-        for (const key of Object.keys(values)) {
-            if (sliders[key]) setSliderValue(sliders[key], values[key]);
+    function captureControlDefaults() {
+        if (frontfagToggle) frontfagToggle.defaultChecked = true;
+        if (piBandToggle) piBandToggle.defaultChecked = false;
+        for (const [key, val] of Object.entries(NORA_SLIDER_DEFAULTS)) {
+            const s = sliders[key];
+            if (s?.el) s.el.defaultValue = String(clampRangeInput(s.el, val));
         }
     }
 
-    function resetModel() {
-        scenarioGodzilla = false;
-        if (frontfagToggle) frontfagToggle.checked = true;
-        if (piBandToggle) piBandToggle.checked = false;
-        applySliderDefaults(NORA_SLIDER_DEFAULTS);
+    function refreshAllSliderLabels() {
+        for (const s of Object.values(sliders)) s.refresh?.();
+    }
+
+    function resetSimulationState() {
         state = { ...defaults };
         derived = stepNora(state, readControls(), 0);
         for (const key of Object.keys(history)) history[key].length = 0;
@@ -740,6 +755,27 @@ function initNora() {
             startLoop();
         }
     }
+
+    function afterControlsReset() {
+        scenarioGodzilla = false;
+        refreshAllSliderLabels();
+        for (const s of Object.values(sliders)) {
+            if (s.el) forceRangeRepaint(s.el);
+        }
+        resetSimulationState();
+    }
+
+    function applySliderDefaults(values) {
+        for (const key of Object.keys(values)) {
+            if (sliders[key]) setSliderValue(sliders[key], values[key]);
+        }
+    }
+
+    captureControlDefaults();
+
+    controlsForm?.addEventListener('reset', () => {
+        requestAnimationFrame(afterControlsReset);
+    });
 
     function applyGodzillaTrollShock() {
         applySliderDefaults(GODZILLA_TROLL_SHOCK);
@@ -955,7 +991,6 @@ function initNora() {
     }
 
     q('nora-godzilla')?.addEventListener('click', applyGodzillaTrollShock);
-    q('nora-reset')?.addEventListener('click', resetModel);
     q('nora-pause')?.addEventListener('click', () => {
         running = !running;
         if (running) startLoop();
@@ -1021,11 +1056,11 @@ function bindSlider(el, label, fmt) {
     update();
     obj.set = (v) => {
         const n = clampRangeInput(el, v);
-        const s = String(n);
-        el.value = s;
-        el.setAttribute('value', s);
+        el.value = String(n);
         update();
+        forceRangeRepaint(el);
     };
+    obj.refresh = update;
     return obj;
 }
 
