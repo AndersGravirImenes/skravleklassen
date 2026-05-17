@@ -48,6 +48,21 @@ const GODZILLA_TROLL_SHOCK = {
     wageShock: 0,
 };
 
+/** Standardverdier for glidebrytere (matcher nora.html). */
+const NORA_SLIDER_DEFAULTS = {
+    omegaShare: 38,
+    policyRate: 45,
+    piTarget: 20,
+    govG: 22,
+    govI: 12,
+    oilShock: 50,
+    gpfgRule: 35,
+    fiscalShock: 0,
+    foreignRp: 25,
+    wageStick: 75,
+    wageShock: 0,
+};
+
 /** π-avvik i Taylor-regelen: punktmål eller kun utenfor 1–3 %. */
 function taylorInflationGap(pi, ctrl) {
     if (ctrl.piBand) {
@@ -624,35 +639,6 @@ function initNora() {
         if (slider?.set) slider.set(value);
     }
 
-    function applyGodzillaTrollShock() {
-        setSliderValue(sliders.oilShock, GODZILLA_TROLL_SHOCK.oilShock);
-        setSliderValue(sliders.gpfgRule, GODZILLA_TROLL_SHOCK.gpfgRule);
-        setSliderValue(sliders.fiscalShock, GODZILLA_TROLL_SHOCK.fiscalShock);
-        setSliderValue(sliders.foreignRp, GODZILLA_TROLL_SHOCK.foreignRp);
-        setSliderValue(sliders.policyRate, GODZILLA_TROLL_SHOCK.policyRate);
-        setSliderValue(sliders.govG, GODZILLA_TROLL_SHOCK.govG);
-        setSliderValue(sliders.govI, GODZILLA_TROLL_SHOCK.govI);
-        setSliderValue(sliders.omegaShare, GODZILLA_TROLL_SHOCK.omegaShare);
-        setSliderValue(sliders.wageStick, GODZILLA_TROLL_SHOCK.wageStick);
-        setSliderValue(sliders.wageShock, GODZILLA_TROLL_SHOCK.wageShock);
-        scenarioGodzilla = true;
-        state = {
-            ...defaults,
-            y: -0.035,
-            pi: 0.024,
-            Rprev: GODZILLA_TROLL_SHOCK.policyRate / 1000,
-        };
-        derived = stepNora(state, readControls(), 0);
-        for (const key of Object.keys(history)) history[key].length = 0;
-        pushHistory();
-        updateHud();
-        draw();
-        if (!running) {
-            running = true;
-            startLoop();
-        }
-    }
-
     function readControls() {
         return {
             frontfag: Boolean(frontfagToggle?.checked),
@@ -707,6 +693,53 @@ function initNora() {
     let state = { ...defaults };
     let derived = stepNora(state, readControls(), 0);
     const history = { y: [], pi: [], c: [] };
+
+    function applySliderDefaults(values) {
+        for (const key of Object.keys(values)) {
+            if (sliders[key]) setSliderValue(sliders[key], values[key]);
+        }
+    }
+
+    function resetModel() {
+        scenarioGodzilla = false;
+        if (frontfagToggle) frontfagToggle.checked = true;
+        if (piBandToggle) piBandToggle.checked = false;
+        applySliderDefaults(NORA_SLIDER_DEFAULTS);
+        state = { ...defaults };
+        derived = stepNora(state, readControls(), 0);
+        for (const key of Object.keys(history)) history[key].length = 0;
+        pushHistory();
+        syncFrontfagUi(readControls());
+        syncPiTargetUi(readControls());
+        updateHud();
+        draw();
+        if (!running) {
+            running = true;
+            startLoop();
+        }
+    }
+
+    function applyGodzillaTrollShock() {
+        applySliderDefaults(GODZILLA_TROLL_SHOCK);
+        scenarioGodzilla = true;
+        state = {
+            ...defaults,
+            y: -0.035,
+            pi: 0.024,
+            Rprev: GODZILLA_TROLL_SHOCK.policyRate / 1000,
+        };
+        derived = stepNora(state, readControls(), 0);
+        for (const key of Object.keys(history)) history[key].length = 0;
+        pushHistory();
+        syncFrontfagUi(readControls());
+        syncPiTargetUi(readControls());
+        updateHud();
+        draw();
+        if (!running) {
+            running = true;
+            startLoop();
+        }
+    }
 
     let running = true;
     let rafId = 0;
@@ -901,15 +934,7 @@ function initNora() {
 
     document.getElementById('nora-godzilla')?.addEventListener('click', applyGodzillaTrollShock);
 
-    document.getElementById('nora-reset')?.addEventListener('click', () => {
-        scenarioGodzilla = false;
-        state = { ...defaults };
-        derived = stepNora(state, readControls(), 0);
-        for (const key of Object.keys(history)) history[key].length = 0;
-        pushHistory();
-        updateHud();
-        draw();
-    });
+    document.getElementById('nora-reset')?.addEventListener('click', resetModel);
 
     document.getElementById('nora-pause')?.addEventListener('click', () => {
         running = !running;
