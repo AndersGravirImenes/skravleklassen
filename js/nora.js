@@ -583,17 +583,31 @@ function updateDiagramFlows(svg, flows) {
     });
 }
 
+function clampRangeInput(el, raw) {
+    const min = Number(el.min ?? 0);
+    const max = Number(el.max ?? 100);
+    const step = Number(el.step) || 1;
+    let n = Number(raw);
+    if (!Number.isFinite(n)) n = min;
+    n = Math.min(max, Math.max(min, n));
+    if (step > 0) {
+        n = min + Math.round((n - min) / step) * step;
+    }
+    return n;
+}
+
 function initNora() {
     const section = document.getElementById('nora');
     const canvas = document.getElementById('nora-canvas');
     const laborCanvas = document.getElementById('nora-labor-canvas');
     const diagramHost = document.getElementById('nora-diagram');
-    const frontfagToggle = document.getElementById('nora-frontfag');
-    const frontfagFieldset = document.getElementById('nora-frontfag-fields');
-    const piBandToggle = document.getElementById('nora-pi-band');
-    const piTargetControl = document.getElementById('nora-pi-target-control');
-    const piTargetInput = document.getElementById('nora-pi-target');
-    const piTargetValEl = document.getElementById('nora-pi-target-val');
+    const q = (id) => section?.querySelector(`#${id}`) ?? null;
+    const frontfagToggle = q('nora-frontfag');
+    const frontfagFieldset = q('nora-frontfag-fields');
+    const piBandToggle = q('nora-pi-band');
+    const piTargetControl = q('nora-pi-target-control');
+    const piTargetInput = q('nora-pi-target');
+    const piTargetValEl = q('nora-pi-target-val');
     if (!section || !canvas) return;
 
     let diagramSvg = null;
@@ -614,17 +628,17 @@ function initNora() {
     let scenarioGodzilla = false;
 
     const sliders = {
-        omegaShare: bindSlider('nora-omega', 'nora-omega-val', (v) => `${v}%`),
-        policyRate: bindSlider('nora-rate', 'nora-rate-val', (v) => `${(v / 10).toFixed(1)}%`),
-        piTarget: bindSlider('nora-pi-target', 'nora-pi-target-val', (v) => `${(v / 10).toFixed(1)}%`),
-        govG: bindSlider('nora-g', 'nora-g-val', (v) => `${v}%`),
-        govI: bindSlider('nora-i', 'nora-i-val', (v) => `${v}%`),
-        oilShock: bindSlider('nora-oil', 'nora-oil-val', (v) => `${v}%`),
-        gpfgRule: bindSlider('nora-gpfg', 'nora-gpfg-val', (v) => `${v}%`),
-        fiscalShock: bindSlider('nora-fiscal', 'nora-fiscal-val', (v) => `${v}%`),
-        foreignRp: bindSlider('nora-foreign', 'nora-foreign-val', (v) => `${v}%`),
-        wageStick: bindSlider('nora-wage-stick', 'nora-wage-stick-val', (v) => `${v}%`),
-        wageShock: bindSlider('nora-wage-shock', 'nora-wage-shock-val', (v) => `${v}%`),
+        omegaShare: bindSlider(q('nora-omega'), q('nora-omega-val'), (v) => `${v}%`),
+        policyRate: bindSlider(q('nora-rate'), q('nora-rate-val'), (v) => `${(v / 10).toFixed(1)}%`),
+        piTarget: bindSlider(q('nora-pi-target'), q('nora-pi-target-val'), (v) => `${(v / 10).toFixed(1)}%`),
+        govG: bindSlider(q('nora-g'), q('nora-g-val'), (v) => `${v}%`),
+        govI: bindSlider(q('nora-i'), q('nora-i-val'), (v) => `${v}%`),
+        oilShock: bindSlider(q('nora-oil'), q('nora-oil-val'), (v) => `${v}%`),
+        gpfgRule: bindSlider(q('nora-gpfg'), q('nora-gpfg-val'), (v) => `${v}%`),
+        fiscalShock: bindSlider(q('nora-fiscal'), q('nora-fiscal-val'), (v) => `${v}%`),
+        foreignRp: bindSlider(q('nora-foreign'), q('nora-foreign-val'), (v) => `${v}%`),
+        wageStick: bindSlider(q('nora-wage-stick'), q('nora-wage-stick-val'), (v) => `${v}%`),
+        wageShock: bindSlider(q('nora-wage-shock'), q('nora-wage-shock-val'), (v) => `${v}%`),
     };
 
     frontfagToggle?.addEventListener('change', () => {
@@ -636,7 +650,15 @@ function initNora() {
     });
 
     function setSliderValue(slider, value) {
-        if (slider?.set) slider.set(value);
+        if (!slider) return;
+        if (slider.set) {
+            slider.set(value);
+            return;
+        }
+        if (slider.el) {
+            const n = clampRangeInput(slider.el, value);
+            slider.el.value = String(n);
+        }
     }
 
     function readControls() {
@@ -932,11 +954,9 @@ function initNora() {
         }
     }
 
-    document.getElementById('nora-godzilla')?.addEventListener('click', applyGodzillaTrollShock);
-
-    document.getElementById('nora-reset')?.addEventListener('click', resetModel);
-
-    document.getElementById('nora-pause')?.addEventListener('click', () => {
+    q('nora-godzilla')?.addEventListener('click', applyGodzillaTrollShock);
+    q('nora-reset')?.addEventListener('click', resetModel);
+    q('nora-pause')?.addEventListener('click', () => {
         running = !running;
         if (running) startLoop();
         else stopLoop();
@@ -976,14 +996,18 @@ function initNora() {
     });
 }
 
-function bindSlider(id, labelId, fmt) {
-    const el = document.getElementById(id);
-    const label = document.getElementById(labelId);
+function bindSlider(el, label, fmt) {
     if (!el) {
-        console.warn(`NORA: mangler glidebryter #${id}`);
-        return { get value() { return 0; } };
+        return {
+            el: null,
+            get value() {
+                return 0;
+            },
+            set() {},
+        };
     }
     const obj = {
+        el,
         get value() {
             const n = Number(el.value);
             return Number.isFinite(n) ? n : 0;
@@ -996,8 +1020,10 @@ function bindSlider(id, labelId, fmt) {
     el.addEventListener('change', update);
     update();
     obj.set = (v) => {
-        el.value = String(v);
-        el.dispatchEvent(new Event('input', { bubbles: true }));
+        const n = clampRangeInput(el, v);
+        const s = String(n);
+        el.value = s;
+        el.setAttribute('value', s);
         update();
     };
     return obj;
