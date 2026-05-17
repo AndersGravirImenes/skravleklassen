@@ -147,10 +147,152 @@ a { color: inherit; text-decoration: none; }
     --nora-controls-w: 300px;
 }
 
+.nora-scenario-block,
 .nora-godzilla-block {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+}
+
+.nora-scenario-bar--backe {
+    background: rgba(94, 184, 232, 0.08);
+    border-color: rgba(94, 184, 232, 0.45);
+}
+
+.btn--scenario-backe {
+    color: var(--accent-bright);
+    border-color: rgba(94, 184, 232, 0.7);
+}
+
+.btn--scenario-backe:hover {
+    background: rgba(94, 184, 232, 0.85);
+    color: var(--bg-0);
+    box-shadow: 0 0 20px rgba(94, 184, 232, 0.35);
+}
+
+body.nora-irf-open {
+    overflow: hidden;
+}
+
+.nora-irf-mp {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+
+.nora-irf-mp.is-open {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+.nora-irf-mp__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(4, 10, 16, 0.82);
+    backdrop-filter: blur(4px);
+}
+
+.nora-irf-mp__sheet {
+    position: relative;
+    z-index: 1;
+    width: min(1100px, 100%);
+    max-height: min(92vh, 900px);
+    overflow: auto;
+    background: var(--bg-1, #0a141c);
+    border: 1px solid rgba(94, 184, 232, 0.35);
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+    padding: 1.25rem 1.5rem 1rem;
+}
+
+.nora-irf-mp__head {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.nora-irf-mp__tag {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    margin: 0 0 0.35rem;
+}
+
+.nora-irf-mp__head h2 {
+    font-family: Orbitron, sans-serif;
+    font-size: 1.15rem;
+    margin: 0 0 0.35rem;
+    color: var(--text);
+}
+
+.nora-irf-mp__lead {
+    margin: 0;
+    font-size: 0.88rem;
+    color: var(--muted);
+    line-height: 1.5;
+    max-width: 52ch;
+}
+
+.nora-irf-mp__close {
+    flex-shrink: 0;
+    width: 2rem;
+    height: 2rem;
+    border: 1px solid rgba(94, 184, 232, 0.4);
+    background: transparent;
+    color: var(--text);
+    font-size: 1.25rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.nora-irf-mp__close:hover {
+    background: rgba(94, 184, 232, 0.2);
+}
+
+.nora-irf-mp__grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.65rem;
+}
+
+.nora-irf-mp__cell {
+    border: 1px solid rgba(94, 184, 232, 0.15);
+    background: rgba(8, 18, 28, 0.6);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.nora-irf-mp__note {
+    margin: 0.85rem 0 0;
+    font-size: 0.78rem;
+    color: var(--dim);
+    line-height: 1.45;
+}
+
+.nora-irf-mp__note a {
+    color: var(--accent-bright);
+}
+
+@media (max-width: 900px) {
+    .nora-irf-mp__grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 520px) {
+    .nora-irf-mp__grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 .nora-scenario-bar {

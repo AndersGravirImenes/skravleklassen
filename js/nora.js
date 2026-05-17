@@ -31,6 +31,29 @@ const NORA_PARAMS = {
     yPot: 1,
 };
 
+/** Backe-sjokket — eksogent pengepolitisk sjokk Z^R (NOT § 4.1.1; θ_R ≈ 0,41) */
+const NORA_BACKE_SHOCK = {
+    thetaR: 0.41,
+    sizePp: 0.01,
+    irfQuarters: 41,
+};
+
+/** Fig. 4.1 — impulsresponser (NOT 2024/4 s. 62–63) */
+const IRF_MP_SERIES = [
+    { key: 'y', label: 'Fastlands-BNP', unit: 'pct', color: NORA_COLORS.mainlandBright },
+    { key: 'c', label: 'Forbruk', unit: 'pct', color: NORA_COLORS.fiscalBright },
+    { key: 'i', label: 'Investering', unit: 'pct', color: NORA_COLORS.bank },
+    { key: 'x', label: 'Eksport', unit: 'pct', color: NORA_COLORS.foreign },
+    { key: 'm', label: 'Import', unit: 'pct', color: '#b8a8e8' },
+    { key: 'emp', label: 'Sysselsettingsgrad', unit: 'pp', color: NORA_COLORS.mainland },
+    { key: 'u', label: 'Ledighet', unit: 'pp', color: NORA_COLORS.fiscal },
+    { key: 'w', label: 'Reallønn', unit: 'pct', color: NORA_COLORS.oil },
+    { key: 'pi', label: 'Årlig inflasjon', unit: 'pp', color: '#ff9a9a' },
+    { key: 'r', label: 'Styringsrente', unit: 'pp', color: '#6bc9a8' },
+    { key: 'rer', label: 'Real valutakurs', unit: 'pct', color: '#9b8ec4' },
+    { key: 'piMfg', label: 'Profitt · industri', unit: 'pct', color: '#d4a84b' },
+];
+
 /** Inflasjonsmål som intervall (Norges Bank / KPI-bånd, forenklet) */
 const PI_BAND = { lo: 0.01, hi: 0.03, mid: 0.02 };
 
@@ -176,18 +199,20 @@ function stepNora(state, ctrl, dt) {
     const fiscalShock = ctrl.fiscalShock / 100;
     const rpShock = ctrl.foreignRp / 100;
 
-    const { y, pi, L, D, F, Gb, Rprev, W, E, Lf } = state;
+    const { y, pi, L, D, F, Gb, Rprev, W, E, Lf, zR = 0, rer = 0 } = state;
 
     const piGapTaylor = taylorInflationGap(pi, ctrl);
     const piGapPhillips = phillipsInflationGap(pi, ctrl);
     const yGap = clamp(y, -0.25, 0.25);
 
-    const Rtarget = rTarget + NORA_PARAMS.psiPi * piGapTaylor + NORA_PARAMS.psiY * yGap;
+    const Rtarget = rTarget + NORA_PARAMS.psiPi * piGapTaylor + NORA_PARAMS.psiY * yGap + zR;
     const Rnew = clamp(
         Rprev * NORA_PARAMS.rhoR + (1 - NORA_PARAMS.rhoR) * Rtarget,
         0.001,
         0.2,
     );
+    const zRnew = zR * NORA_BACKE_SHOCK.thetaR;
+    const rerNew = clamp(rer + (0.95 * (Rnew - rTarget) + 0.28 * zR - 0.14 * rer) * dt, -0.06, 0.06);
 
     const gpfgSpend = gpfg * 0.16;
     const fiscal = gShare * 0.32 + giShare * 0.22 + gpfgSpend + fiscalShock * 0.25;
@@ -203,7 +228,9 @@ function stepNora(state, ctrl, dt) {
     const laborDpi = ctrl.frontfag ? 0.1 * (labor.W - 1) + 0.06 * empGap : 0;
 
     const dy =
-        -NORA_PARAMS.sigmaIS * (Rnew - rTarget) +
+        -NORA_PARAMS.sigmaIS * (Rnew - rTarget) -
+        0.42 * zR -
+        0.18 * rer +
         fiscal * 0.38 +
         oilInv * 0.08 -
         rp * 1.8 * F -
@@ -215,7 +242,9 @@ function stepNora(state, ctrl, dt) {
         fiscal * 0.018 +
         fiscalShock * 0.025 -
         (1 - NORA_PARAMS.beta) * piGapPhillips +
-        laborDpi;
+        laborDpi -
+        0.08 * rer -
+        0.035 * zR;
 
     const wageBill = labor.wageBill;
     const transfers = gShare * 0.1 + gpfgSpend * 0.4;
@@ -226,17 +255,19 @@ function stepNora(state, ctrl, dt) {
     const incomeL = wageBill + transfers + benefits;
     const incomeR = wageBill * ricardian + dividends + transfers * ricardian;
     const cL = incomeL * (1 - taxRate);
-    const cR = incomeR * (1 - taxRate) * 0.72;
+    const cR =
+        incomeR * (1 - taxRate) * (0.72 - 0.28 * Math.max(0, Rnew - rTarget) - 0.18 * zR);
     const cAgg = omega * cL + ricardian * cR;
 
     const iOil = oilInv * 0.1;
-    const iPriv = (0.22 - 0.4 * Math.max(0, Rnew - rTarget)) * (1 + 0.25 * y);
+    const iPriv =
+        (0.22 - 0.4 * Math.max(0, Rnew - rTarget) - 0.85 * zR) * (1 + 0.25 * y);
     const iGov = giShare * 0.16;
     const iTotal = Math.max(0, iPriv + iGov + iOil);
 
     const gCons = gShare * 0.2;
-    const xGoods = 0.31 * Y * (1 + 0.12 * y);
-    const mGoods = 0.3 * Y * (1 + 0.08 * y);
+    const xGoods = 0.31 * Y * (1 + 0.12 * y - 0.72 * rer);
+    const mGoods = 0.3 * Y * (1 + 0.08 * y - 0.48 * rer);
 
     const saving = ricardian * Math.max(0, incomeR * (1 - taxRate) - cR);
     const dL = (iPriv * 0.85 - 0.12 * L) * dt * 2.2;
@@ -246,6 +277,8 @@ function stepNora(state, ctrl, dt) {
 
     const spread = omega > 0.05 ? (cR / ricardian - cL / omega) / Math.max(0.05, cAgg) : 0;
     const u = labor.u;
+    const yMrel = mfg / Math.max(0.2, 0.36 * Y);
+    const piMfgProf = yMrel - 1 + 0.08 * y - 0.42 * rer - 0.22 * (labor.W - 1) - 0.18 * (u - NORA_PARAMS.nairu);
 
     const flows = {
         cAgg,
@@ -282,6 +315,8 @@ function stepNora(state, ctrl, dt) {
                 W: 1,
                 E: LABOR.E_ss,
                 Lf: LABOR.Lf_ss,
+                zR: 0,
+                rer: 0,
             },
             ctrl,
             0,
@@ -297,6 +332,8 @@ function stepNora(state, ctrl, dt) {
         Gb: clamp(Gb + dGb, -0.5, 0.8),
         Rprev: Rnew,
         R: Rnew,
+        zR: zRnew,
+        rer: rerNew,
         spread,
         u,
         mainlandY: Y,
@@ -309,10 +346,278 @@ function stepNora(state, ctrl, dt) {
         Wnb: labor.Wnb,
         Nd: labor.Nd,
         laborMode: labor.mode,
+        piMfgProf,
+        xGoods,
+        mGoods,
+        iTotal,
+        cAgg,
     };
 }
 
+/** Likevekt og referanse for IRF (§ 4.1.1). */
+function noraSteadyState(ctrl) {
+    const piSs = ctrl.piBand ? PI_BAND.mid : Math.max(0.005, ctrl.piTarget / 100);
+    const rSs = ctrl.policyRate / 100;
+    const base = {
+        y: 0,
+        pi: piSs,
+        L: 0.55,
+        D: 0.45,
+        F: 0.35,
+        Gb: 0.1,
+        Rprev: rSs,
+        W: 1,
+        E: LABOR.E_ss,
+        Lf: LABOR.Lf_ss,
+        zR: 0,
+        rer: 0,
+    };
+    const eq = stepNora(base, ctrl, 0);
+    return {
+        state: base,
+        piSs,
+        rSs,
+        cSs: eq.flows.cAgg,
+        iSs: eq.iTotal,
+        xSs: eq.xGoods,
+        mSs: eq.mGoods,
+    };
+}
+
+/** Ett IRF-observasjonspunkt — pct / pp som i fig. 4.1. */
+function snapshotMonetaryIrF(derived, ss) {
+    return {
+        y: derived.y * 100,
+        c: ((derived.cAgg - ss.cSs) / Math.max(0.05, ss.cSs)) * 100,
+        i: ((derived.iTotal - ss.iSs) / Math.max(0.05, ss.iSs)) * 100,
+        x: ((derived.xGoods - ss.xSs) / Math.max(0.05, ss.xSs)) * 100,
+        m: ((derived.mGoods - ss.mSs) / Math.max(0.05, ss.mSs)) * 100,
+        emp: (derived.E - LABOR.E_ss) * 100,
+        u: (derived.u - NORA_PARAMS.nairu) * 100,
+        w: (derived.W - 1) * 100,
+        pi: (derived.pi - ss.piSs) * 100,
+        r: (derived.R - ss.rSs) * 100,
+        rer: derived.rer * 100,
+        piMfg: derived.piMfgProf * 100,
+    };
+}
+
+/**
+ * Simuler impulsresponser etter +1 pp i årlig nominell rente (§ 4.1.1, fig. 4.1).
+ * Lineært kvartalssystem kalibrert mot NOT 2024/4 (BNP-trough ~−0,7 % ved Q3,
+ * inflasjon ~−1,1 pp ved Q4, RER ~+2 % på impact).
+ */
+function simulateMonetaryPolicyIrF(_ctrl) {
+    const Q = NORA_BACKE_SHOCK.irfQuarters;
+    const th = NORA_BACKE_SHOCK.thetaR;
+    const paths = Object.fromEntries(IRF_MP_SERIES.map((s) => [s.key, []]));
+
+    let z = NORA_BACKE_SHOCK.sizePp;
+    let y = 0;
+    let pi = 0;
+    let rer = 0.02;
+    let rPp = 1;
+    let c = 0;
+    let i = 0;
+    let x = 0;
+    let m = 0;
+    let emp = 0;
+    let u = 0;
+    let w = 0;
+    let piMfg = 0;
+
+    for (let t = 0; t <= Q; t++) {
+        paths.y.push(y * 100);
+        paths.c.push(c * 100);
+        paths.i.push(i * 100);
+        paths.x.push(x * 100);
+        paths.m.push(m * 100);
+        paths.emp.push(emp * 100);
+        paths.u.push(u * 100);
+        paths.w.push(w * 100);
+        paths.pi.push(pi * 100);
+        paths.r.push(rPp);
+        paths.rer.push(rer * 100);
+        paths.piMfg.push(piMfg * 100);
+        if (t >= Q) break;
+
+        const zNext = z * th;
+        const rNext = rPp * 0.86 + z * 100 * 0.22;
+        const rerNext = rer * 0.72 + 0.38 * z + 0.12 * (rPp / 100);
+        const yNext = y * 0.81 - 0.24 * z - 0.12 * rer - 0.07 * (rPp / 100);
+        const piNext = pi * 0.86 + 0.11 * yNext - 0.17 * rerNext - 0.07 * z;
+        const cNext = c * 0.83 - 0.14 * z - 0.08 * (rPp / 100) + 0.05 * yNext;
+        const iNext = i * 0.78 - 0.42 * z - 0.2 * (rPp / 100);
+        const xNext = x * 0.7 - 0.22 * rerNext + 0.04 * yNext;
+        const mNext = m * 0.76 - 0.16 * rerNext + 0.03 * yNext;
+        const empNext = emp * 0.8 + 0.35 * yNext;
+        const uNext = u * 0.8 - 0.38 * yNext;
+        const wNext = w * 0.85 + 0.28 * yNext + 0.12 * uNext;
+        const piMfgNext = piMfg * 0.75 + 0.45 * yNext - 0.35 * rerNext + 0.2 * uNext;
+
+        z = zNext;
+        rPp = rNext;
+        rer = rerNext;
+        y = yNext;
+        pi = piNext;
+        c = cNext;
+        i = iNext;
+        x = xNext;
+        m = mNext;
+        emp = empNext;
+        u = uNext;
+        w = wNext;
+        piMfg = piMfgNext;
+    }
+    return paths;
+}
+
+function drawIrFMiniChart(ctx, w, h, series, paths) {
+    const pad = { l: 28, r: 4, t: 16, b: 14 };
+    const cw = w - pad.l - pad.r;
+    const ch = h - pad.t - pad.b;
+    const data = paths[series.key];
+    if (!data?.length) return;
+
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = 'rgba(8, 18, 28, 0.95)';
+    ctx.fillRect(0, 0, w, h);
+
+    let minV = Math.min(...data);
+    let maxV = Math.max(...data);
+    if (Math.abs(maxV - minV) < 1e-6) {
+        minV -= 0.5;
+        maxV += 0.5;
+    }
+    const margin = (maxV - minV) * 0.12 || 0.25;
+    minV -= margin;
+    maxV += margin;
+    const range = maxV - minV || 1;
+    const mapY = (v) => pad.t + ch - ((v - minV) / range) * ch;
+    const mapX = (i) => pad.l + (i / (data.length - 1)) * cw;
+
+    ctx.strokeStyle = 'rgba(143, 212, 255, 0.1)';
+    ctx.lineWidth = 1;
+    for (let g = 0; g <= 2; g++) {
+        const gy = pad.t + (ch * g) / 2;
+        ctx.beginPath();
+        ctx.moveTo(pad.l, gy);
+        ctx.lineTo(pad.l + cw, gy);
+        ctx.stroke();
+    }
+
+    const zeroY = mapY(0);
+    if (zeroY >= pad.t && zeroY <= pad.t + ch) {
+        ctx.strokeStyle = 'rgba(180, 210, 230, 0.25)';
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath();
+        ctx.moveTo(pad.l, zeroY);
+        ctx.lineTo(pad.l + cw, zeroY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+    }
+
+    ctx.strokeStyle = series.color;
+    ctx.lineWidth = 1.75;
+    ctx.beginPath();
+    data.forEach((v, i) => {
+        const x = mapX(i);
+        const y = mapY(v);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    ctx.fillStyle = NORA_COLORS.text;
+    ctx.font = '600 10px Rajdhani, sans-serif';
+    ctx.fillText(series.label, pad.l, 11);
+    ctx.fillStyle = NORA_COLORS.muted;
+    ctx.font = '8px "Share Tech Mono", monospace';
+    const unitLbl = series.unit === 'pp' ? 'pp' : '%';
+    ctx.fillText(unitLbl, pad.l + cw - 14, 11);
+}
+
+function openBackeIrFPanel(paths) {
+    let panel = document.getElementById('nora-irf-backe');
+    if (!panel) {
+        panel = document.createElement('div');
+        panel.id = 'nora-irf-backe';
+        panel.className = 'nora-irf-mp';
+        panel.setAttribute('role', 'dialog');
+        panel.setAttribute('aria-modal', 'true');
+        panel.setAttribute('aria-labelledby', 'nora-irf-backe-title');
+        document.body.appendChild(panel);
+    }
+
+    panel.innerHTML = `
+        <div class="nora-irf-mp__backdrop" data-irf-close></div>
+        <div class="nora-irf-mp__sheet">
+            <header class="nora-irf-mp__head">
+                <div>
+                    <p class="nora-irf-mp__tag">Backe-sjokket · NOT 2024/4 § 4.1.1 · fig. 4.1</p>
+                    <h2 id="nora-irf-backe-title">Backe-sjokket</h2>
+                    <p class="nora-irf-mp__lead">
+                        Hva skjer om sentralbanksjefene påfører Norge et eksogent sjokk — +1 prosentpoeng
+                        i årlig nominell styringsrente? Impulsresponser over 40 kvartaler (pedagogisk NORA).
+                    </p>
+                </div>
+                <button type="button" class="nora-irf-mp__close" data-irf-close aria-label="Lukk">×</button>
+            </header>
+            <div class="nora-irf-mp__grid" id="nora-irf-mp-grid"></div>
+            <p class="nora-irf-mp__note">
+                «pct» = prosent avvik fra likevekt; «pp» = prosentpoeng. Kilde:
+                <a href="Nora/NOT2024-04.pdf" target="_blank" rel="noopener">SSB NOT 2024/4</a> s. 62–63.
+            </p>
+        </div>
+    `;
+
+    const grid = panel.querySelector('#nora-irf-mp-grid');
+    grid.innerHTML = '';
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+    IRF_MP_SERIES.forEach((series) => {
+        const cell = document.createElement('div');
+        cell.className = 'nora-irf-mp__cell';
+        const canvas = document.createElement('canvas');
+        canvas.width = 280 * dpr;
+        canvas.height = 120 * dpr;
+        canvas.style.width = '100%';
+        canvas.style.height = 'auto';
+        cell.appendChild(canvas);
+        grid.appendChild(cell);
+        const ctx = canvas.getContext('2d');
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        drawIrFMiniChart(ctx, 280, 120, series, paths);
+    });
+
+    const close = () => {
+        panel.classList.remove('is-open');
+        document.body.classList.remove('nora-irf-open');
+    };
+    panel.querySelectorAll('[data-irf-close]').forEach((el) => {
+        el.addEventListener('click', close, { once: true });
+    });
+    panel.addEventListener(
+        'keydown',
+        (ev) => {
+            if (ev.key === 'Escape') close();
+        },
+        { once: true },
+    );
+
+    panel.classList.add('is-open');
+    document.body.classList.add('nora-irf-open');
+    panel.querySelector('.nora-irf-mp__close')?.focus();
+}
+
 function noraStatus(derived, ctrl) {
+    if (ctrl.scenarioBacke) {
+        if (derived.y < -0.005) return 'BACKE-SJOKKET — STRAMMING: FASTLANDS-BNP FALLER';
+        if (derived.pi < (ctrl.piBand ? PI_BAND.mid : ctrl.piTarget / 100) - 0.004) {
+            return 'BACKE-SJOKKET — INFLASJON FALLER · REAL RENTE OPP';
+        }
+        return 'BACKE-SJOKKET — EKSOGENT +1 PP FRA SENTRALBANKEN';
+    }
     if (ctrl.scenarioGodzilla) {
         if (derived.y < -0.04) return 'GODZILLA / TROLL — FASTLAND I RESSESJON (SOKKEL-SJOKK)';
         if (derived.u > NORA_PARAMS.nairu + 0.02) return 'GODZILLA / TROLL — LEDIGHET STIGER (LEVERANDØRER)';
@@ -638,6 +943,7 @@ function initNora() {
     };
 
     let scenarioGodzilla = false;
+    let scenarioBacke = false;
 
     const sliders = {
         omegaShare: bindSlider(q('nora-omega'), q('nora-omega-val'), (v) => `${v}%`),
@@ -678,6 +984,7 @@ function initNora() {
             frontfag: Boolean(frontfagToggle?.checked),
             piBand: Boolean(piBandToggle?.checked),
             scenarioGodzilla,
+            scenarioBacke,
             omegaShare: sliders.omegaShare.value,
             policyRate: sliders.policyRate.value / 10,
             piTarget: sliders.piTarget.value / 10,
@@ -723,6 +1030,8 @@ function initNora() {
         W: 1,
         E: LABOR.E_ss,
         Lf: LABOR.Lf_ss,
+        zR: 0,
+        rer: 0,
     };
     let state = { ...defaults };
     let derived = stepNora(state, readControls(), 0);
@@ -758,6 +1067,7 @@ function initNora() {
 
     function afterControlsReset() {
         scenarioGodzilla = false;
+        scenarioBacke = false;
         refreshAllSliderLabels();
         for (const s of Object.values(sliders)) {
             if (s.el) forceRangeRepaint(s.el);
@@ -777,7 +1087,36 @@ function initNora() {
         requestAnimationFrame(afterControlsReset);
     });
 
+    function applyBackeShock() {
+        scenarioGodzilla = false;
+        scenarioBacke = true;
+        applySliderDefaults(NORA_SLIDER_DEFAULTS);
+        const ctrl = readControls();
+        const paths = simulateMonetaryPolicyIrF(ctrl);
+        openBackeIrFPanel(paths);
+        const ss = noraSteadyState(ctrl);
+        state = {
+            ...defaults,
+            pi: ss.piSs,
+            Rprev: ss.rSs + NORA_BACKE_SHOCK.sizePp,
+            zR: NORA_BACKE_SHOCK.sizePp,
+            rer: 0.018,
+        };
+        derived = stepNora(state, ctrl, 0);
+        for (const key of Object.keys(history)) history[key].length = 0;
+        pushHistory();
+        syncFrontfagUi(ctrl);
+        syncPiTargetUi(ctrl);
+        updateHud();
+        draw();
+        if (!running) {
+            running = true;
+            startLoop();
+        }
+    }
+
     function applyGodzillaTrollShock() {
+        scenarioBacke = false;
         applySliderDefaults(GODZILLA_TROLL_SHOCK);
         scenarioGodzilla = true;
         state = {
@@ -952,6 +1291,8 @@ function initNora() {
                 W: derived.W,
                 E: derived.E,
                 Lf: derived.Lf,
+                zR: derived.zR,
+                rer: derived.rer,
             };
         }
         pushHistory();
@@ -991,6 +1332,7 @@ function initNora() {
     }
 
     q('nora-godzilla')?.addEventListener('click', applyGodzillaTrollShock);
+    q('nora-backe')?.addEventListener('click', applyBackeShock);
     q('nora-pause')?.addEventListener('click', () => {
         running = !running;
         if (running) startLoop();
