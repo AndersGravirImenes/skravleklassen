@@ -1,0 +1,565 @@
+/* Pengepolitikk spesial — egen underside (Skravleklassen) */
+:root {
+    --bg-0: #0a0604;
+    --bg-1: #160c08;
+    --text: #fbe4cf;
+    --muted: #c8a890;
+    --dim: #8a6e58;
+    --accent: #ff9a3c;
+    --accent-bright: #ffc857;
+    --bank: #e85d5d;
+    --grid: rgba(255, 154, 60, 0.06);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 5rem;
+}
+
+body.pp-page {
+    font-family: 'Rajdhani', system-ui, sans-serif;
+    font-weight: 500;
+    line-height: 1.55;
+    color: var(--text);
+    background: var(--bg-0);
+    min-height: 100vh;
+    min-width: 1100px;
+}
+
+body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: -1;
+    background-image:
+        radial-gradient(ellipse at 15% 0%, rgba(255, 154, 60, 0.22) 0%, transparent 50%),
+        radial-gradient(ellipse at 90% 75%, rgba(255, 92, 0, 0.12) 0%, transparent 45%),
+        linear-gradient(var(--grid) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
+}
+
+a { color: inherit; text-decoration: none; }
+::selection { background: var(--accent); color: var(--bg-0); }
+
+.pp-nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(10, 6, 4, 0.92);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid rgba(255, 154, 60, 0.35);
+}
+
+.pp-nav-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1rem 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.pp-logo {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 900;
+    font-size: 0.95rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent-bright);
+    text-shadow: 0 0 12px rgba(255, 154, 60, 0.45);
+}
+
+.pp-nav-links {
+    display: flex;
+    gap: 1.5rem;
+    list-style: none;
+    margin-left: auto;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.78rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.pp-nav-links a {
+    color: var(--muted);
+    transition: color 0.2s, text-shadow 0.2s;
+}
+
+.pp-nav-links a:hover,
+.pp-nav-links a[aria-current="page"] {
+    color: var(--accent-bright);
+    text-shadow: 0 0 8px rgba(255, 200, 87, 0.5);
+}
+
+.pp-nav-back {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    border: 1px solid rgba(255, 154, 60, 0.45);
+    padding: 0.45rem 0.9rem;
+    transition: background 0.2s, color 0.2s;
+}
+
+.pp-nav-back:hover {
+    background: var(--accent);
+    color: var(--bg-0);
+}
+
+.pp-hero {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 3rem 2rem 1rem;
+}
+
+.pp-hero h1 {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 800;
+    font-size: 2.35rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent-bright);
+    text-shadow: 0 0 24px rgba(255, 154, 60, 0.35);
+}
+
+.pp-hero .tag {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.85rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 0.5rem;
+}
+
+main.pp-main {
+    padding: 1rem 2rem 4rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.section-label {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.85rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 1.25rem;
+}
+
+.section-label::before {
+    content: '';
+    width: 28px;
+    height: 1px;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+}
+
+.section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, var(--accent), transparent);
+}
+
+.pp-note {
+    font-size: 0.95rem;
+    color: var(--muted);
+    line-height: 1.7;
+    margin-bottom: 2rem;
+    max-width: 78ch;
+}
+
+.pp-note a {
+    color: var(--accent-bright);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.pp-note strong { color: var(--text); }
+
+.pp-wrap {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 1.5rem;
+    align-items: start;
+    margin-bottom: 3.5rem;
+}
+
+.pp-panel {
+    position: relative;
+    background: linear-gradient(165deg, rgba(36, 18, 12, 0.92) 0%, rgba(22, 12, 8, 0.96) 100%);
+    border: 1px solid rgba(255, 154, 60, 0.35);
+    padding: 1rem;
+}
+
+.pp-panel::before,
+.pp-panel::after {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--accent);
+    pointer-events: none;
+    z-index: 2;
+}
+
+.pp-panel::before {
+    top: -2px;
+    left: -2px;
+    border-right: none;
+    border-bottom: none;
+}
+
+.pp-panel::after {
+    bottom: -2px;
+    right: -2px;
+    border-left: none;
+    border-top: none;
+}
+
+.pp-watermark {
+    position: absolute;
+    top: 0.65rem;
+    right: 0.75rem;
+    z-index: 3;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(255, 154, 60, 0.5);
+    pointer-events: none;
+}
+
+.pp-chart-wrap {
+    border: 1px solid rgba(255, 154, 60, 0.15);
+    background: rgba(16, 8, 4, 0.5);
+    margin-bottom: 0.75rem;
+}
+
+.pp-chart-title {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--dim);
+    padding: 0.45rem 0.65rem 0;
+}
+
+#pp-phillips-canvas {
+    display: block;
+    width: 100%;
+    height: 200px;
+}
+
+#pp-canvas {
+    display: block;
+    width: 100%;
+    height: 260px;
+}
+
+.pp-hud {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 1.25rem;
+    align-items: flex-end;
+    padding-top: 0.5rem;
+}
+
+.pp-readout .val {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 800;
+    font-size: 1.35rem;
+    color: var(--accent-bright);
+    line-height: 1.1;
+}
+
+.pp-readout .lbl {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.58rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--dim);
+    margin-top: 0.15rem;
+}
+
+.pp-status {
+    flex: 1 1 100%;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-top: 0.35rem;
+    padding: 0.5rem 0.65rem;
+    border: 1px solid rgba(255, 154, 60, 0.25);
+    background: rgba(255, 154, 60, 0.06);
+}
+
+.pp-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
+.pp-scenario-bar {
+    padding: 0.6rem 1rem;
+    background: rgba(232, 93, 93, 0.08);
+    border: 1px solid rgba(232, 93, 93, 0.45);
+}
+
+.pp-scenario-note {
+    font-size: 0.78rem;
+    color: var(--dim);
+    line-height: 1.45;
+    margin-top: 0.5rem;
+}
+
+.pp-scenario-note strong { color: var(--muted); }
+
+.pp-mode-toggle {
+    padding: 0.85rem 1rem;
+    background: rgba(22, 12, 8, 0.7);
+    border: 1px solid rgba(255, 154, 60, 0.35);
+}
+
+.pp-toggle {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    color: var(--text);
+    cursor: pointer;
+}
+
+.pp-toggle input { margin-top: 0.2rem; accent-color: var(--accent); }
+
+.pp-toggle-hint {
+    font-size: 0.72rem;
+    color: var(--dim);
+    margin-top: 0.45rem;
+    line-height: 1.4;
+}
+
+.pp-control {
+    padding: 0.75rem 1rem;
+    background: rgba(22, 12, 8, 0.65);
+    border: 1px solid rgba(255, 154, 60, 0.2);
+}
+
+.pp-control header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 0.5rem;
+}
+
+.pp-control label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text);
+}
+
+.pp-control .value {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.85rem;
+    color: var(--accent-bright);
+}
+
+.pp-control input[type="range"] {
+    width: 100%;
+    accent-color: var(--accent);
+}
+
+.pp-control-hint {
+    font-size: 0.72rem;
+    color: var(--dim);
+    margin-top: 0.45rem;
+    line-height: 1.4;
+}
+
+.pp-fieldset {
+    border: 1px solid rgba(255, 154, 60, 0.2);
+    padding: 0.75rem 1rem 0.5rem;
+}
+
+.pp-fieldset--off { opacity: 0.5; }
+
+.pp-fieldset legend {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    padding: 0 0.35rem;
+}
+
+.btn {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent-bright);
+    background: transparent;
+    border: 1px solid rgba(255, 154, 60, 0.55);
+    padding: 0.55rem 1rem;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+}
+
+.btn:hover {
+    background: var(--accent);
+    color: var(--bg-0);
+    box-shadow: 0 0 16px rgba(255, 154, 60, 0.35);
+}
+
+.btn--scenario {
+    width: 100%;
+    color: var(--bank);
+    border-color: rgba(232, 93, 93, 0.65);
+}
+
+.btn--scenario:hover {
+    background: rgba(232, 93, 93, 0.85);
+    color: var(--bg-0);
+    box-shadow: 0 0 16px rgba(232, 93, 93, 0.3);
+}
+
+.pp-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.pp-concepts {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    margin-bottom: 3rem;
+}
+
+.pp-concept {
+    padding: 1.25rem 1.35rem;
+    background: rgba(22, 12, 8, 0.65);
+    border: 1px solid rgba(255, 154, 60, 0.2);
+}
+
+.pp-concept h3 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.95rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent-bright);
+    margin-bottom: 0.65rem;
+}
+
+.pp-concept p {
+    font-size: 0.9rem;
+    color: var(--muted);
+    line-height: 1.6;
+}
+
+.pp-concept code {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.82em;
+    color: var(--accent);
+}
+
+.pp-tools {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 3rem;
+}
+
+.pp-tool-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1.25rem;
+    border: 1px solid rgba(255, 154, 60, 0.25);
+    background: rgba(36, 18, 12, 0.5);
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.pp-tool-card:hover {
+    border-color: var(--accent);
+    background: rgba(255, 154, 60, 0.08);
+}
+
+.pp-tool-card .tool-tag {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.14em;
+    color: var(--accent);
+}
+
+.pp-tool-card h3 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1rem;
+    letter-spacing: 0.06em;
+    color: var(--text);
+}
+
+.pp-tool-card p {
+    font-size: 0.88rem;
+    color: var(--dim);
+    flex: 1;
+}
+
+.pp-tool-card .btn {
+    align-self: flex-start;
+    margin-top: 0.35rem;
+}
+
+.pp-episodes {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    max-width: 52ch;
+}
+
+.pp-episodes a {
+    display: block;
+    padding: 0.85rem 1rem;
+    border: 1px solid rgba(255, 154, 60, 0.2);
+    font-size: 0.95rem;
+    color: var(--text);
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.pp-episodes a:hover {
+    border-color: var(--accent);
+    background: rgba(255, 154, 60, 0.08);
+    color: var(--accent-bright);
+}
+
+.pp-footer {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+    border-top: 1px solid rgba(255, 154, 60, 0.2);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    color: var(--dim);
+    text-align: center;
+}
+
+.pp-footer a {
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}

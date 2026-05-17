@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1200">
+    <meta name="theme-color" content="#0a0604">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <title>Pengepolitikk spesial | Skravleklassen</title>
+    <meta name="description" content="Renter, NAIRU, frontfagsmodellen og Taylor-regelen — interaktiv spesialside fra Skravleklassen.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800;900&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/pengepolitikk.css">
+</head>
+<body class="pp-page">
+    <nav class="pp-nav" aria-label="Pengepolitikk-navigasjon">
+        <div class="pp-nav-inner">
+            <a href="index.html" class="pp-logo">Pengepolitikk · spesial</a>
+            <ul class="pp-nav-links">
+                <li><a href="index.html">Skravleklassen</a></li>
+                <li><a href="#sim" aria-current="page">Simulator</a></li>
+                <li><a href="#verktoy">Verktøy</a></li>
+                <li><a href="nora.html">NORA ↗</a></li>
+            </ul>
+            <a href="index.html" class="pp-nav-back">← Tilbake til podkast</a>
+        </div>
+    </nav>
+
+    <header class="pp-hero">
+        <p class="tag">Skravleklassen · tema 01 — kapital</p>
+        <h1>Pengepolitikk spesial</h1>
+        <p class="tag">Renter · NAIRU · frontfag · Norges Bank</p>
+    </header>
+
+    <main class="pp-main" id="pp">
+        <section id="sim">
+            <div class="section-label">01 // SIMULATOR</div>
+            <p class="pp-note">
+                Når slutter <strong>styringsrenten</strong> å virke på norske husholdninger — og hva gjør
+                <strong>Ida Wolden Bache</strong> da? Denne siden samler podkastens pengepolitiske tråd:
+                <strong>NAIRU</strong> (naturledighet), <strong>frontfagsmodellen</strong> (lønnsdannelse),
+                og sentralbankens <strong>Taylor-regel</strong>
+                <strong>i = r* + ψ<sub>π</sub>(π−π*) + ψ<sub>y</sub>·y</strong>
+                med Norges Banks inflasjonsmål som punkt eller intervall <strong>1–3 %</strong>.
+                Simulatoren er pedagogisk — ikke Norges Banks offisielle modell.
+                Se også <a href="nora.html">NORA</a> for fastlands-Norge (SSB NOT 2024/4).
+            </p>
+
+            <div class="pp-wrap">
+                <div class="pp-panel">
+                    <span class="pp-watermark">NORGES BANK · REDUSERT NK</span>
+                    <div class="pp-chart-wrap">
+                        <p class="pp-chart-title">Arbeidsmarked · Phillips / lønnskurve</p>
+                        <canvas id="pp-phillips-canvas" aria-label="Phillips-kurve: ledighet mot inflasjon"></canvas>
+                    </div>
+                    <div class="pp-chart-wrap">
+                        <p class="pp-chart-title">Tidsserie · output gap, inflasjon og rente</p>
+                        <canvas id="pp-canvas" aria-label="Tidsserie: output gap, inflasjon og nominell rente"></canvas>
+                    </div>
+                    <div class="pp-hud" aria-live="polite">
+                        <div class="pp-readout">
+                            <div class="val" id="pp-y">0.0%</div>
+                            <div class="lbl">Output gap (y)</div>
+                        </div>
+                        <div class="pp-readout">
+                            <div class="val" id="pp-pi">2.00%</div>
+                            <div class="lbl">Inflasjon (π)</div>
+                        </div>
+                        <div class="pp-readout">
+                            <div class="val" id="pp-i">4.50%</div>
+                            <div class="lbl">Nominell rente (i)</div>
+                        </div>
+                        <div class="pp-readout">
+                            <div class="val" id="pp-u">3.8%</div>
+                            <div class="lbl">Ledighet (U)</div>
+                        </div>
+                        <p class="pp-status" id="pp-status">LIKEVEKT — STYRING OG PRISSTABILITET</p>
+                    </div>
+                </div>
+
+                <aside class="pp-controls" aria-label="Styring av pengepolitikk-simulatoren">
+                    <div class="pp-scenario-bar">
+                        <button
+                            type="button"
+                            class="btn btn--scenario"
+                            id="pp-backe"
+                            title="Eksogent sjokk: +1 pp nominell styringsrente"
+                        >› Backe-sjokket (+1 pp)</button>
+                        <p class="pp-scenario-note">
+                            Hva skjer om <strong>sentralbanksjefene</strong> hever styringsrenten ett prosentpoeng
+                            uten at økonomien «baerer» det? Ett klikk — se impuls i tidsserien.
+                        </p>
+                    </div>
+
+                    <div class="pp-mode-toggle">
+                        <label class="pp-toggle">
+                            <input type="checkbox" id="pp-frontfag" checked>
+                            <span>Frontfagsmodell (lønnskurve · normlønn)</span>
+                        </label>
+                        <p class="pp-toggle-hint">På: lønnssjokk kan gi høyere inflasjon og ledighet samtidig. Av: klassisk Phillips via Okun.</p>
+                    </div>
+
+                    <fieldset class="pp-fieldset" id="pp-frontfag-fields">
+                        <legend>Frontfag / lønnssjokk</legend>
+                        <div class="pp-control">
+                            <header>
+                                <label for="pp-wage-shock">Z<sup>W</sup> — Lønnssjokk</label>
+                                <span class="value" id="pp-wage-shock-val">0%</span>
+                            </header>
+                            <input type="range" id="pp-wage-shock" min="0" max="100" value="0">
+                            <p class="pp-control-hint">Midlertidig løft i frontfagsforhandlingene som presser prisveksten.</p>
+                        </div>
+                    </fieldset>
+
+                    <div class="pp-control">
+                        <header>
+                            <label for="pp-rate">r* — Styringsrente</label>
+                            <span class="value" id="pp-rate-val">4.5%</span>
+                        </header>
+                        <input type="range" id="pp-rate" min="0" max="90" step="5" value="45">
+                        <p class="pp-control-hint">Nominell rente Norges Bank sikter mot. Taylor-regelen justerer videre ved avvik i π eller y.</p>
+                    </div>
+
+                    <div class="pp-control">
+                        <label class="pp-toggle">
+                            <input type="checkbox" id="pp-pi-band">
+                            <span>Inflasjonsmål som intervall 1–3 % (ikke punktmål)</span>
+                        </label>
+                        <header>
+                            <label for="pp-pi-target">π* — Inflasjonsmål (punkt)</label>
+                            <span class="value" id="pp-pi-target-val">2.0%</span>
+                        </header>
+                        <input type="range" id="pp-pi-target" min="0" max="50" step="5" value="20">
+                        <p class="pp-control-hint">Intervall: banken strammer bare over 3 % og løsner under 1 %; innenfor båndet ingen π-respons.</p>
+                    </div>
+
+                    <div class="pp-control">
+                        <header>
+                            <label for="pp-demand">Etterspørselssjokk</label>
+                            <span class="value" id="pp-demand-val">0%</span>
+                        </header>
+                        <input type="range" id="pp-demand" min="0" max="100" value="0">
+                        <p class="pp-control-hint">Positivt sjokk til BNP (f.eks. oljepris, eksport) — tester om renten «rekker» etter.</p>
+                    </div>
+
+                    <div class="pp-actions">
+                        <button type="button" class="btn" id="pp-reset">› Nullstill modell</button>
+                        <button type="button" class="btn" id="pp-pause">› Pause / fortsett</button>
+                    </div>
+                </aside>
+            </div>
+        </section>
+
+        <section id="konsepter">
+            <div class="section-label">02 // KONSEPTER</div>
+            <div class="pp-concepts">
+                <article class="pp-concept">
+                    <h3>Taylor-regelen</h3>
+                    <p>
+                        Sentralbanken hever renten når inflasjonen er høy eller BNP ligger over potensial,
+                        og senker den når økonomien er svak. I modellen:
+                        <code>i = r* + 1,6·(π−π*) + 0,12·y</code> (forenklet fra NORA NOT 2024/4).
+                    </p>
+                </article>
+                <article class="pp-concept">
+                    <h3>NAIRU</h3>
+                    <p>
+                        <strong>Non-Accelerating Inflation Rate of Unemployment</strong> — ledighetsnivået
+                        der inflasjonen verken akselererer eller bremses. Olav Slettebø forklarte det i podkasten;
+                        under NAIRU presser lønnskrav prisene opp.
+                    </p>
+                </article>
+                <article class="pp-concept">
+                    <h3>Frontfagsmodellen</h3>
+                    <p>
+                        Industriens tariffavtaler setter en <strong>normlønn</strong> som resten av
+                        arbeidsmarkedet følger med etter. Treg lønnsdannelse kan gi høy ledighet og
+                        høy inflasjon samtidig — renten «biter» dårligere.
+                    </p>
+                </article>
+                <article class="pp-concept">
+                    <h3>Inflasjonsmål 1–3 %</h3>
+                    <p>
+                        Norges Bank opererer med et <strong>intervall</strong>, ikke bare 2 %.
+                        Innenfor båndet kan banken la renten ligge selv om π ikke er nøyaktig på målet —
+                        relevant når styringsrenten mister gjennomslag i bolig og bedriftsmarkedet.
+                    </p>
+                </article>
+            </div>
+        </section>
+
+        <section id="verktoy">
+            <div class="section-label">03 // VERKTØY</div>
+            <div class="pp-tools">
+                <a href="nora.html" class="pp-tool-card">
+                    <span class="tool-tag">SSB · fastland</span>
+                    <h3>NORA</h3>
+                    <p>Full DSGE-forkortelse med finanspolitikk, GPFG og olje-koblinger (NOT 2024/4).</p>
+                    <span class="btn">› Åpne NORA</span>
+                </a>
+                <a href="index.html#moniac" class="pp-tool-card">
+                    <span class="tool-tag">Arrakis · hydraulikk</span>
+                    <h3>MONIAC</h3>
+                    <p>Phillips’ maskin som spice-sirkulasjon — rente, skatt og multiplikator i 3D.</p>
+                    <span class="btn">› Til MONIAC</span>
+                </a>
+                <a href="index.html#hank" class="pp-tool-card">
+                    <span class="tool-tag">Arrakis · HANK</span>
+                    <h3>HANK</h3>
+                    <p>Heterogene agenter: Fremen (HtM) vs CHOAM — når renten ikke når alle like.</p>
+                    <span class="btn">› Til HANK</span>
+                </a>
+            </div>
+        </section>
+
+        <section id="episoder">
+            <div class="section-label">04 // EPISODER</div>
+            <ul class="pp-episodes">
+                <li>
+                    <a href="https://podcasts.apple.com/no/podcast/skravleklassen/id1359266902" target="_blank" rel="noopener">
+                        Olav Slettebø forklarer NAIRU
+                    </a>
+                </li>
+                <li>
+                    <a href="https://podcasts.apple.com/no/podcast/skravleklassen/id1359266902" target="_blank" rel="noopener">
+                        Rentemysteriet — eksogene sjokk og vantro
+                    </a>
+                </li>
+            </ul>
+        </section>
+    </main>
+
+    <footer class="pp-footer">
+        <p>Pedagogisk modell · <a href="index.html">Skravleklassen</a> · Tema: pengepolitikk</p>
+    </footer>
+
+    <script type="module" src="js/pengepolitikk.js"></script>
+</body>
+</html>
