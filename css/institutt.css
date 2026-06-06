@@ -246,6 +246,26 @@ main.ioa-main {
     max-width: 110ch;
 }
 
+.ioa-note > p {
+    margin-bottom: 1rem;
+}
+
+.ioa-scenarios {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
+.ioa-scenarios li {
+    padding-left: 1rem;
+    border-left: 2px solid rgba(94, 184, 232, 0.45);
+}
+
+.ioa-scenarios strong {
+    color: var(--text);
+}
+
 .ioa-note a {
     color: var(--accent-bright);
     text-decoration: underline;
