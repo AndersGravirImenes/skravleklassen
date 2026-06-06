@@ -1,0 +1,120 @@
+@import 'tailwindcss';
+
+/* theme.extend.colors.dune — Tailwind v4 @theme */
+@theme {
+  --color-dune-bg: #0c0c0b;
+  --color-dune-panel: #161513;
+  --color-dune-amber: #de9b43;
+  --color-dune-sand: #cbb293;
+  --color-dune-harkonnen: #8a251a;
+
+  --color-mono-green: #9aab6e;
+  --color-mono-yellow: #de9b43;
+  --color-mono-dim: #6e6558;
+
+  --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
+  --font-display: 'Bebas Neue', 'Arial Narrow', sans-serif;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    @apply min-h-dvh bg-dune-bg text-dune-sand antialiased;
+  }
+
+  body {
+    font-family: var(--font-mono);
+  }
+}
+
+@layer utilities {
+  .text-mono-accent {
+    color: var(--color-dune-amber);
+  }
+
+  .text-mono-green {
+    color: var(--color-mono-green);
+  }
+
+  .text-mono-dim {
+    color: var(--color-mono-dim);
+  }
+
+  .text-status-alert {
+    color: var(--color-dune-harkonnen);
+  }
+
+  .border-industrial {
+    border: 2px solid var(--color-dune-amber);
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--color-dune-sand) 35%, transparent),
+      0 0 0 1px #000;
+  }
+
+  .panel-chamfer {
+    clip-path: polygon(
+      0 0,
+      calc(100% - 12px) 0,
+      100% 12px,
+      100% 100%,
+      12px 100%,
+      0 calc(100% - 12px)
+    );
+  }
+
+  .dune-screen {
+    position: relative;
+    overflow: hidden;
+  }
+
+  @keyframes moniac-dash {
+    to {
+      stroke-dashoffset: -24;
+    }
+  }
+
+  .dune-screen::after {
+    content: ' ';
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: 999;
+    pointer-events: none;
+    background:
+      linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
+      linear-gradient(
+        90deg,
+        rgba(255, 0, 0, 0.06),
+        rgba(0, 255, 0, 0.02),
+        rgba(0, 0, 255, 0.06)
+      );
+    background-size:
+      100% 3px,
+      6px 100%;
+  }
+}
+
+.crt-grain::before {
+  content: '';
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  opacity: 0.12;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+  mix-blend-mode: overlay;
+}
+
+.crt-vignette {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 49;
+  background: radial-gradient(
+    ellipse 80% 70% at 50% 50%,
+    transparent 40%,
+    rgba(0, 0, 0, 0.65) 100%
+  );
+}
