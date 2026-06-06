@@ -73,17 +73,17 @@
                     en liten åpen økonomi der oljeinntekter går via <strong>GPFG</strong>, olje-I kobler
                     sokkelen til fastland, husholdninger er likviditetsbegrensede eller Ricardianske,
                     lønn settes gjennom <strong>frontfagsmodellen</strong>, og Norges Bank følger en
-                    <strong>Taylor-regel</strong>. Vår simulator er en pedagogisk forkortelse — ikke
-                    offisiell prognose — men den lar deg kjøre krisescenariene selv.
+                    <strong>Taylor-regel</strong>. I simulatoren kan du velge <strong>med eller uten
+                    frontfagsmodell</strong> — og sammenligne hvordan lønnsdannelse endrer responsen
+                    på samme sjokk.
                 </p>
                 <p>Foreløpig har vi kalibrert to scenarier:</p>
                 <ul class="ioa-scenarios">
                     <li>
                         <strong>Backe-sjokket</strong> — Hva skjer hvis forskere fra UiO får lurt
                         med seg Ida Wolden Bache på å dra til med et makrosjokk — +1 prosentpoeng
-                        uten at resten av økonomien «ba om det» — for å teste den vanskelige,
-                        testbare hypotesen om forventninger? Bakgrunnen er podkastens rentemysterium
-                        og NOT § 4.1.1: eksogen pengepolitikk, Taylor-regel og impulsresponser for
+                        uten at resten av økonomien «ba om det» — for å teste forventningsdannelsen.
+                        Bakgrunnen er NOT § 4.1.1: eksogen pengepolitikk, Taylor-regel og impulsresponser for
                         fastlands-BNP, inflasjon og sysselsetting når sentralbanken plutselig blir
                         laboratoriet.
                     </li>
@@ -118,34 +118,76 @@
 
                 <div class="ioa-model-block ioa-model-block--nora">
                         <article class="ioa-bridge ioa-bridge--nora">
-                            <p class="ioa-bridge-tag">Fastland · referansemodell</p>
-                            <h2>Hvorfor NORA betyr noe</h2>
+                            <p class="ioa-bridge-tag">Fastland · referansemodell · nora.js</p>
+                            <h2>Modellering og avvik fra SSB</h2>
                             <div class="ioa-bridge-body">
                                 <div>
-                                    <h3>For norsk økonomi</h3>
+                                    <h3>Hvordan nora.js er bygget</h3>
                                     <p>
-                                        Når Finansdepartementet vurderer et budsjettforslag, Norges Bank tolker
-                                        finanspolitikkens effekt på inflasjon, eller SSB skriver om
-                                        <strong>fastlands-Norge</strong>, er NORA referansen de peker tilbak til.
-                                        Modellen fanger det som er særegent norsk: oljeinntekter via
-                                        <strong>GPFG</strong>, <strong>frontfags</strong> lønnsdannelse,
-                                        likviditetsbegrensede husholdninger ved siden av Ricardianske, og en
-                                        liten åpen økonomi der finanspolitikk og pengepolitikk møtes i samme
-                                        regneark. Uten NORA forblir debatten om multiplikatorer og NAIRU
-                                        abstrakt — med NORA ser du hvordan et skattesjokk faktisk sprer seg
-                                        gjennom forbruk, lønn og rente.
+                                        Simulatoren i <strong>nora.js</strong> er en
+                                        <strong>pedagogisk forkortelse</strong> av SSBs NORA (NOT 2024/4,
+                                        fig. 2.1) — ikke SSBs kode, ikke offisiell prognose. Alt kjører
+                                        kvartalsvis i nettleseren: funksjonen <strong>stepNora</strong>
+                                        oppdaterer tilstanden, diagrammet (fig. 2.1) og tidsseriene mens
+                                        du skrur på glidebrytere eller trykker Backe- eller Godzilla-sjokk.
+                                    </p>
+                                    <p>
+                                        I stedet for hundrevis av log-lineære ligninger har vi et
+                                        <strong>aggregert kjernesystem</strong> med output gap
+                                        <strong>y</strong>, KPI-inflasjon <strong>π</strong>, styringsrente
+                                        (Taylor, likn. 2.51), reallønn og sysselsetting (frontfag-blokk),
+                                        plus stiliserte beholdninger for bank (innskudd, firmalån,
+                                        utenlandsgjeld) og offentlig saldo. Forbruk, investering, import
+                                        og eksport beregnes som <strong>strømmer</strong> hvert kvartal —
+                                        de har ikke egne dynamiske ligninger og egne sjokk som i full NORA.
+                                    </p>
+                                    <p>
+                                        Kjerneparametrene er hentet fra NOT tab. 3.5: diskonteringsfaktor
+                                        <strong>β ≈ 0,997</strong>, prisrigiditet mellomvarer
+                                        <strong>ξ<sub>P</sub> ≈ 0,82</strong> (Phillips-helningen κ er
+                                        <em>avledet</em>, ikke satt ad hoc), prisindeksering
+                                        <strong>ω<sub>Ind</sub> ≈ 0,14</strong>, rente-smoothing
+                                        <strong>ρ<sub>R</sub> ≈ 0,90</strong>, Taylor
+                                        <strong>ψ<sub>π</sub> ≈ 1,6</strong> og
+                                        <strong>ψ<sub>Y</sub> ≈ 0,11</strong>, og Backe-persistens
+                                        <strong>θ<sub>R</sub> ≈ 0,41</strong>. Finanspolitikk (G, I, GPFG,
+                                        fiskalt sjokk, olje-I) mates inn som <strong>avvik fra
+                                        standard-glidebrytere</strong>, slik at likevekt ved oppstart
+                                        tilsvarer normal nivå — ikke et permanent etterspørselssjokk.
                                     </p>
                                 </div>
                                 <div>
-                                    <h3>Hvorfor instituttet modellerte den</h3>
+                                    <h3>Hva vi har beholdt fra SSB</h3>
+                                    <ul class="ioa-bridge-list">
+                                        <li>Strukturen i fig. 2.1: ω likviditetsbegrensede / Ricardianske, bank, offentlig sektor, utland, olje-I, GPFG, sentralbank.</li>
+                                        <li>Frontfagsmodell med lønnskurve — kan slås av for «fleksibel lønn».</li>
+                                        <li>Taylor-regel med punktmål eller inflasjonsbånd 1–3 % (ingen π-respons innenfor båndet).</li>
+                                        <li>Hybrid Phillips-kurve: κ fra Calvo, indeksering mot forrige kvartals π, svak forankring mot mål.</li>
+                                        <li>Backe-sjokket (+1 pp eksogen rente) og IRF-panel kalibrert mot fig. 4.1 / § 4.1.1.</li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h3>Viktigste avvik</h3>
+                                    <ul class="ioa-bridge-list">
+                                        <li><strong>Aggregasjon</strong> — én inflasjon og ett output gap; SSB har separate prisløp for mellomvarer, import, eksport og forbruksvarer, plus π<sub>ATE</sub> og forventninger E<sub>t</sub>[π<sub>t+1</sub>].</li>
+                                        <li><strong>Olje og GPFG</strong> — glidebrytere og enkle impulser; SSB har egen oljesektor, oljepris-sjokk og fondsregler (θ<sub>POil</sub>, ψ<sub>InvOil,POil</sub>, …).</li>
+                                        <li><strong>Finanspolitikk</strong> — aggregert G/I/GPFG/Z<sup>G</sup>; SSB har full budsjettidentitet, skatter, overføringer og mange fiskale sjokkprosesser.</li>
+                                        <li><strong>Bank og utland</strong> — forenklet RER og risikopremie; SSB modellerer ξ<sub>NFA</sub>, ξ<sub>OF</sub>, eksport i utenlandsk valuta og importprissetting (ξ<sub>IM</sub>).</li>
+                                        <li><strong>Arbeidsmarked</strong> — forenklet kap. 2.3–2.4; estimerte ρ<sub>W</sub>, ρ<sub>E</sub> og ν<sub>U</sub> fra tab. 3.5 er ikke fullt gjennomført.</li>
+                                        <li><strong>Scenarier</strong> — Godzilla er pedagogisk SIØA-scenario; Backe-IRF-panelet bruker et eget lineært hjelpesystem, ikke identisk med live-simuleringen i stepNora.</li>
+                                        <li><strong>Tall og grenser</strong> — π begrenses til ca. −1 % … 5 % i simulatoren; mange koblinger (f.eks. etterspørsel mot finanspolitikk) er stiliserte, ikke re-estimert på norske data.</li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h3>Hva du kan bruke den til</h3>
                                     <p>
-                                        NOT 2024/4 er over 800 sider. Det er utmerket for SSB, upraktisk for
-                                        podkastlytteren som nettopp hørte om finanspolitikkens rolle i
-                                        inflasjonskampen. SIØA har derfor laget en pedagogisk forkortelse:
-                                        ikke for å erstatte SSBs modell, men for å gjøre mekanismene synlige —
-                                        GPFG-uttak, olje-I, Taylor-regel og frontfag som brytere du kan
-                                        skru på. Vi modellerer NORA fordi norsk økonomi fortjener å forstås
-                                        utenfor departementenes korridorer.
+                                        Simulatoren er laget for å <strong>forstå mekanismer og fortegn</strong>:
+                                        hvordan rente, lønn, fond og finanspolitikk kobles i norsk makro —
+                                        og for å sammenligne Backe- og Godzilla-scenarier med det SSB skriver
+                                        om i <a href="Nora/NOT2024-04.pdf" target="_blank" rel="noopener">NOT 2024/4</a>.
+                                        For kvantitative vurderinger av budsjett, rentebane eller prognoser
+                                        gjelder fortsatt <strong>SSBs NORA</strong> — ikke Skravleklassens
+                                        nettleserversjon.
                                     </p>
                                 </div>
                             </div>
