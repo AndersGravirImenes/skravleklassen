@@ -624,7 +624,8 @@ main.ioa-main {
 }
 
 #episoder {
-    margin-top: 0.5rem;
+    margin-top: 0;
+    margin-bottom: 2.5rem;
     clear: both;
 }
 
