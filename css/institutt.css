@@ -502,6 +502,7 @@ main.ioa-main {
 
 .ioa-model-card--nora { --card-accent: var(--nora); }
 .ioa-model-card--pp { --card-accent: #ff9a3c; }
+.ioa-model-card--stad { --card-accent: #5eb8e8; }
 .ioa-model-card--moniac { --card-accent: #ff5c00; }
 .ioa-model-card--hank { --card-accent: #ff4d8b; }
 

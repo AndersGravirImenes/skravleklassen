@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1200">
+    <meta name="theme-color" content="#040810">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <title>Stad skipstunnel — samfunnsøkonomisk analyse | SIØA</title>
+    <meta name="description" content="SIØAs samfunnsøkonomiske analyse av Stad skipstunnel — KS1 2012 og oppdatert kostnadsramme 8,5 mrd (2026). Interaktiv nåverdiberegning.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800;900&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/stad.css?v=3">
+</head>
+<body class="stad-page">
+    <nav class="stad-nav" aria-label="Stad-analyse navigasjon">
+        <div class="stad-nav-inner">
+            <a href="stad.html" class="stad-logo">Stad skipstunnel · SIØA</a>
+            <ul class="stad-nav-links">
+                <li><a href="index.html">Podkast</a></li>
+                <li><a href="institutt.html">Institutt ↗</a></li>
+                <li><a href="#beregning" aria-current="page">Beregning</a></li>
+                <li><a href="#metode">Metode</a></li>
+            </ul>
+            <a href="institutt.html" class="stad-nav-back">← Tilbake til institutt</a>
+        </div>
+    </nav>
+
+    <header class="stad-hero">
+        <p class="tag">SIØA · analyse 01 · samferdsel · Vestlandet</p>
+        <h1>Stad skipstunnel</h1>
+        <p class="lede">
+            I 2012 anslo KS1 at tunnelen kostet <strong>1,5–2,1 mrd.</strong> (2011-kroner) og ga
+            et prissatt underskudd på 390–910 mill. I 2026 ligger Kystverkets kostnadsramme på
+            <strong>ca. 8,5 mrd.</strong> (prisjustert) — mens nyttekomponentene i stor grad er
+            de samme. Skru på kostnader, nytte, trafikk og diskontering for å regne hjem om
+            gapet kan lukkes — eller om prosjektet er samfunnsøkonomisk forsvarlig.
+        </p>
+        <p class="stad-seal">Kilder: KS1 vedlegg 4 (2012) · Kystverket mars 2026 · ikke offisiell prognose</p>
+    </header>
+
+    <main class="stad-main">
+        <section id="beregning">
+            <div class="section-label">01 // NÅVERDI</div>
+            <p class="stad-note">
+                Velg et <strong>scenario</strong> som utgangspunkt, eller juster hver parameter
+                selv. Nyttekomponentene følger KS1-strukturen; kostnadene kan settes til
+                Stortingets vedtatte ramme (<strong>5,4 mrd.</strong>) eller Kystverkets oppdaterte
+                anslag (<strong>8,5 mrd.</strong>). Følsomhet for rente, periode og bølger
+                interpoleres fra kapittel 2.3 i
+                <a href="ks1_stad.pdf" target="_blank" rel="noopener">ks1_stad.pdf</a>.
+            </p>
+
+            <div class="stad-panel stad-panel--chart">
+                <span class="stad-watermark" id="stad-watermark">NÅVERDI · 2026-KRONER · KYSTVERKET · 2026</span>
+                <div class="stad-shock-bar">
+                    <button type="button" class="stad-shock-btn" id="stad-monster-btn" aria-pressed="false">
+                        Sjømonster-sjokket
+                    </button>
+                    <p class="stad-shock-note">
+                        Forhistorisk fauna dukker opp utenfor Stad og angriper skipstrafikken.
+                        Betalingsvilligheten for trygg tunnelpassasje eksploderer — ikke modellert i KS1.
+                    </p>
+                </div>
+                <div class="stad-chart-wrap">
+                    <canvas id="stad-canvas" aria-label="Søylediagram: kostnader, prissatt nytte og netto nåverdi"></canvas>
+                </div>
+                <div class="stad-hud" aria-live="polite">
+                    <div class="stad-readout">
+                        <div class="val" id="stad-readout-cost">—</div>
+                        <div class="lbl">Sum kostnader</div>
+                    </div>
+                    <div class="stad-readout">
+                        <div class="val" id="stad-readout-benefit">—</div>
+                        <div class="lbl">Prissatt nytte</div>
+                    </div>
+                    <div class="stad-readout">
+                        <div class="val" id="stad-readout-net">—</div>
+                        <div class="lbl">Netto nåverdi</div>
+                    </div>
+                    <div class="stad-readout">
+                        <div class="val" id="stad-readout-gap">—</div>
+                        <div class="lbl">Gap til lønnsomhet</div>
+                    </div>
+                    <p class="stad-verdict stad-verdict--neg" id="stad-verdict">—</p>
+                </div>
+            </div>
+
+            <div class="stad-controls-grid" aria-label="Parametre for nåverdiberegning">
+                <div class="stad-control-group">
+                    <h3>Scenario</h3>
+                    <div class="stad-toggle-row stad-toggle-row--wrap">
+                        <button type="button" class="stad-toggle" data-preset="ks1_lite">KS1 · liten</button>
+                        <button type="button" class="stad-toggle" data-preset="ks1_stor">KS1 · stor</button>
+                        <button type="button" class="stad-toggle" data-preset="storting_2026">Storting 5,4 mrd</button>
+                        <button type="button" class="stad-toggle stad-toggle--active" data-preset="kystverk_2026">Kystverk 8,5 mrd</button>
+                    </div>
+                </div>
+
+                <div class="stad-control-group">
+                    <h3>Kostnader</h3>
+                    <div class="stad-slider-row">
+                        <label>Investering (nåverdi) <span id="stad-invest-val">8,50 mrd</span></label>
+                        <input type="range" id="stad-invest" min="1000" max="12000" step="50" value="8500">
+                    </div>
+                    <div class="stad-slider-row">
+                        <label>Drift og vedlikehold <span id="stad-drift-val">450 mill</span></label>
+                        <input type="range" id="stad-drift" min="50" max="800" step="10" value="450">
+                    </div>
+                    <div class="stad-slider-row">
+                        <label>Skattekostnad <span id="stad-skatt-val">20 %</span></label>
+                        <input type="range" id="stad-skatt" min="0" max="30" step="1" value="20">
+                    </div>
+                </div>
+
+                <div class="stad-control-group">
+                    <h3>Diskontering</h3>
+                    <div class="stad-slider-row">
+                        <label>Kalkulasjonsrente <span id="stad-rate-val">4,5 %</span></label>
+                        <input type="range" id="stad-rate" min="2" max="7" step="0.1" value="4.5">
+                    </div>
+                    <div class="stad-slider-row">
+                        <label>Analyseperiode <span id="stad-period-val">75 år</span></label>
+                        <input type="range" id="stad-period" min="50" max="120" step="1" value="75">
+                    </div>
+                    <div class="stad-slider-row">
+                        <label>Vekst i tids-/sikkerhetsverdi <span id="stad-growth-val">1,5 %</span></label>
+                        <input type="range" id="stad-growth" min="0" max="3" step="0.1" value="1.5">
+                    </div>
+                </div>
+
+                <div class="stad-control-group stad-control-group--monster" id="stad-monster-sliders" hidden>
+                    <h3>Sjømonster-intensitet</h3>
+                    <div class="stad-slider-row">
+                        <label>Angrepsintensitet <span id="stad-monster-intensity-val">100 %</span></label>
+                        <input type="range" id="stad-monster-intensity" min="10" max="100" step="5" value="100">
+                    </div>
+                    <p class="stad-control-hint">
+                        Ved full intensitet: ulykkesverdi ×12, ventetid ×6, hurtigbåt ×3,5 — pluss
+                        prissatt monster-trygghet. Skipstrafikken flykter inn i tunnelen.
+                    </p>
+                </div>
+
+                <div class="stad-control-group">
+                    <h3>Trafikk og skala</h3>
+                    <div class="stad-slider-row">
+                        <label>Skipstrafikk / bølgeeksponering <span id="stad-traffic-val">100 %</span></label>
+                        <input type="range" id="stad-traffic" min="50" max="200" step="5" value="100">
+                    </div>
+                    <div class="stad-slider-row">
+                        <label>Samlet nytte-skala <span id="stad-benefit-scale-val">100 %</span></label>
+                        <input type="range" id="stad-benefit-scale" min="50" max="200" step="5" value="100">
+                    </div>
+                    <label class="stad-check">
+                        <input type="checkbox" id="stad-waves">
+                        <span>+10 % høyere bølger i framtiden</span>
+                    </label>
+                </div>
+
+                <div class="stad-control-group stad-control-group--wide">
+                    <h3>Nyttekomponenter (andel av KS1-basis)</h3>
+                    <div class="stad-benefit-grid">
+                        <div class="stad-slider-row">
+                            <label>Hurtigbåt <span id="stad-benefit-hurtigbat-val">100 %</span></label>
+                            <input type="range" id="stad-benefit-hurtigbat" min="0" max="200" step="5" value="100">
+                        </div>
+                        <div class="stad-slider-row">
+                            <label>Spart ventetid <span id="stad-benefit-ventetid-val">100 %</span></label>
+                            <input type="range" id="stad-benefit-ventetid" min="0" max="200" step="5" value="100">
+                        </div>
+                        <div class="stad-slider-row">
+                            <label>Spart drivstoff <span id="stad-benefit-drivstoff-val">100 %</span></label>
+                            <input type="range" id="stad-benefit-drivstoff" min="0" max="200" step="5" value="100">
+                        </div>
+                        <div class="stad-slider-row">
+                            <label>Spart reisetid <span id="stad-benefit-reisetid-val">100 %</span></label>
+                            <input type="range" id="stad-benefit-reisetid" min="0" max="200" step="5" value="100">
+                        </div>
+                        <div class="stad-slider-row">
+                            <label>Færre ulykker <span id="stad-benefit-ulykker-val">100 %</span></label>
+                            <input type="range" id="stad-benefit-ulykker" min="0" max="200" step="5" value="100">
+                        </div>
+                        <div class="stad-slider-row">
+                            <label>Miljø / CO₂ <span id="stad-benefit-miljo-val">100 %</span></label>
+                            <input type="range" id="stad-benefit-miljo" min="0" max="200" step="5" value="100">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stad-control-group">
+                    <h3>Uprissert nytte</h3>
+                    <div class="stad-slider-row">
+                        <label>Din vurdering (nåverdi) <span id="stad-unpriced-val">0 mill</span></label>
+                        <input type="range" id="stad-unpriced" min="0" max="15000" step="50" value="0">
+                    </div>
+                    <p class="stad-control-hint">
+                        Fiskeri, trygghet, turisme m.m. — ikke tallfestet i KS1, men kan avgjøre
+                        om prosjektet bør gjennomføres.
+                    </p>
+                </div>
+            </div>
+
+            <div class="stad-table-wrap">
+                <table class="stad-table">
+                    <thead>
+                        <tr>
+                            <th>Komponent</th>
+                            <th id="stad-table-unit">Nåverdi (mill. 2026-kr)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="stad-table-body"></tbody>
+                </table>
+            </div>
+
+            <p class="stad-hurdle" id="stad-hurdle"></p>
+        </section>
+
+        <section id="uprissert" class="stad-unpriced">
+            <div class="section-label">02 // UPRISSATTE EFFEKTER</div>
+            <p class="stad-note">
+                KS1 tallfester ikke alle gevinster. Tabell A gir subjektive vurderinger
+                (<strong>+</strong> liten, <strong>++</strong> middels). Med 8,5 mrd. i kostnad
+                må disse — i kroner — fylle et langt større gap enn i 2012.
+            </p>
+            <h3>Kvalitative nyttekomponenter (KS1, tabell 2.1)</h3>
+            <ul class="stad-unpriced-list" id="stad-unpriced-list"></ul>
+        </section>
+
+        <section id="metode">
+            <div class="section-label">03 // METODE</div>
+            <div class="stad-method">
+                <article class="stad-method-card">
+                    <h3>Fra 1,5 til 8,5 mrd.</h3>
+                    <p>
+                        KS1 (2012) anslo investeringer på 1,1–1,6 mrd. i 2011-kroner. Kystverkets
+                        oppdaterte ramme per mars 2026 er 8,6 mrd. (prisjustert, inkl. mva.) —
+                        nesten fem ganger Stortingets vedtatte ramme på 5,4 mrd. Nytteanslagene
+                        er i hovedsak uendret.
+                    </p>
+                </article>
+                <article class="stad-method-card">
+                    <h3>Nåverdimetoden</h3>
+                    <p>
+                        Kostnader kommer tidlig (byggeperiode), gevinster strømmer inn over
+                        tiår. Lavere kalkulasjonsrente veier framtidig nytte tyngre — men
+                        holder sjelden mot en kostnadssprekk på flere milliarder.
+                    </p>
+                </article>
+                <article class="stad-method-card">
+                    <h3>Skattefinansiering</h3>
+                    <p>
+                        Offentlige prosjekter får <strong>20 øre per krone</strong> i
+                        skattekostnad på finansieringsbehovet — en teoretisk kostnad ved at
+                        skattelagte midler brukes mindre effektivt enn private.
+                    </p>
+                </article>
+            </div>
+            <p class="stad-note">
+                SIØA rekonstruerer KS1s struktur og følsomhetsankre — ikke Kystverkets eller
+                Finansdepartementets offisielle modell. For vedtak og budsjett gjelder statens
+                dokumenter, ikke Skravleklassens nettleserversjon.
+            </p>
+        </section>
+    </main>
+
+    <footer class="stad-footer">
+        <p>
+            Skravleklassens institutt for økonomisk analyse (SIØA) ·
+            <a href="institutt.html">Institutt</a> ·
+            <a href="ks1_stad.pdf" target="_blank" rel="noopener">KS1 vedlegg 4 (PDF)</a> · 2026
+        </p>
+    </footer>
+
+    <script src="js/stad.js?v=3"></script>
+</body>
+</html>
