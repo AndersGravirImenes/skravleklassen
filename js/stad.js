@@ -96,6 +96,64 @@
         miljo: 1.2
     };
 
+    const MONSTER_META = [
+        {
+            id: 'traffic',
+            label: 'Flyktende skipstrafikk',
+            desc: 'Færre fartøy tør å passere Stad på åpent hav. Trafikken konsentreres i tunnelen — og skalerer ventetid, drivstoff, reisetid og miljø.',
+            maxLabel: '+85 % trafikk ved full intensitet'
+        },
+        {
+            id: 'ulykker',
+            key: 'ulykker',
+            label: 'Færre ulykker',
+            desc: 'Forlis- og kollisjonsrisiko utenfor Stad antas å eksplodere når sjømonster er til stede. Tunnelen unngår åpent monsterfarvann.',
+            maxMult: MONSTER_MULT.ulykker
+        },
+        {
+            id: 'ventetid',
+            key: 'ventetid',
+            label: 'Spart ventetid',
+            desc: 'Skip venter ikke bare på vær — de venter på at monsteret går videre. Tunnel gir forutsigbar passasje.',
+            maxMult: MONSTER_MULT.ventetid
+        },
+        {
+            id: 'hurtigbat',
+            key: 'hurtigbat',
+            label: 'Nyskapt hurtigbåttrafikk',
+            desc: 'Pendling og persontransport over Stad øker når sjøveien utenfor er monsterutsatt og tunnel er trygg rute.',
+            maxMult: MONSTER_MULT.hurtigbat
+        },
+        {
+            id: 'reisetid',
+            key: 'reisetid',
+            label: 'Spart reisetid',
+            desc: 'Fartøy unngår omveier og evakuering fra åpent hav; gjennomsnittsfarten i tunnel øker i nytteberegningen.',
+            maxMult: MONSTER_MULT.reisetid
+        },
+        {
+            id: 'drivstoff',
+            key: 'drivstoff',
+            label: 'Spart drivstoff',
+            desc: 'Mindre behov for å krysse eksponert sjø i dårlig vær og fluktmanøvrer — lavere drivstofforbruk per passering.',
+            maxMult: MONSTER_MULT.drivstoff
+        },
+        {
+            id: 'miljo',
+            key: 'miljo',
+            label: 'Reduserte miljøutslipp',
+            desc: 'Drivstoffbesparelser gir lavere CO₂-utslipp; sekundæreffekt av at færre skip står og venter utenfor Stad.',
+            maxMult: MONSTER_MULT.miljo
+        },
+        {
+            id: 'trygghet',
+            special: true,
+            label: 'Prissatt monster-trygghet',
+            desc: 'SIØA-tilleggskomponent — ikke i KS1. Samfunnets betalingsvillighet for å unngå sjømonster, skalert med tunnelinvestering.',
+            maxLabel: 'ca. 2 200–4 000 mill. nåverdi'
+        }
+    ];
+
     const state = {
         preset: 'kystverk_2026',
         year: 2026,
@@ -233,6 +291,10 @@
         return n.toFixed(digits ?? 1).replace('.', ',') + ' %';
     }
 
+    function fmtMult(n) {
+        return '×' + n.toFixed(1).replace('.', ',');
+    }
+
     function bind(id) {
         return document.getElementById(id);
     }
@@ -327,9 +389,12 @@
             monsterBtn.setAttribute('aria-pressed', state.monster ? 'true' : 'false');
         }
 
-        const monsterSliders = bind('stad-monster-sliders');
-        if (monsterSliders) {
-            monsterSliders.hidden = !state.monster;
+        const monsterBox = document.querySelector('.stad-monster-box');
+        monsterBox?.classList.toggle('stad-monster-box--active', state.monster);
+
+        const intensityWrap = bind('stad-monster-intensity-wrap');
+        if (intensityWrap) {
+            intensityWrap.classList.toggle('stad-monster-intensity--live', state.monster);
         }
 
         const th = bind('stad-table-unit');
@@ -507,6 +572,67 @@
         ctx.fillText(`NÅVERDI · ${state.year}-KRONER`, pad.l, 18);
     }
 
+    function renderMonsterBox(result) {
+        const list = bind('stad-monster-components');
+        const status = bind('stad-monster-status');
+        if (!list) return;
+
+        const f = monsterFactor();
+
+        list.innerHTML = MONSTER_META.map((item) => {
+            let effectLabel = '';
+            let boostLabel = '';
+
+            if (item.id === 'traffic') {
+                const boost = Math.round(f * 85);
+                effectLabel = f > 0
+                    ? `+${boost} % trafikk nå`
+                    : item.maxLabel;
+                if (f > 0) {
+                    const effective = Math.round((state.traffic / 100) * (1 + f * 0.85) * 100);
+                    boostLabel = `Effektiv trafikk: ${effective} % av KS1-basis`;
+                }
+            } else if (item.special) {
+                effectLabel = item.maxLabel;
+                if (f > 0 && result.monsterTrygghet > 0) {
+                    boostLabel = `+${fmtMill(result.monsterTrygghet)} nåverdi`;
+                }
+            } else if (item.key) {
+                const currentMult = lerpMult(item.key, f);
+                effectLabel = f > 0
+                    ? `${fmtMult(currentMult)} nå (maks ${fmtMult(item.maxMult)})`
+                    : `maks ${fmtMult(item.maxMult)}`;
+                const delta = result.monsterDelta[item.key] || 0;
+                if (f > 0 && delta > 0.5) {
+                    boostLabel = `+${fmtMill(delta)} nåverdi`;
+                }
+            }
+
+            const activeCls = f > 0 ? ' stad-monster-item--live' : '';
+            return `
+                <li class="stad-monster-item${activeCls}">
+                    <div class="stad-monster-item-head">
+                        <strong>${item.label}</strong>
+                        <span class="stad-monster-effect">${effectLabel}</span>
+                    </div>
+                    <p>${item.desc}</p>
+                    ${boostLabel ? `<span class="stad-monster-boost">${boostLabel}</span>` : ''}
+                </li>
+            `;
+        }).join('');
+
+        if (status) {
+            if (!state.monster) {
+                status.textContent = 'Sjokket er av — komponentene viser maks effekt ved full intensitet.';
+            } else {
+                const totalBoost = (result.monsterTrygghet || 0) + sum(result.monsterDelta || {});
+                status.textContent = result.net > 0
+                    ? `Sjokket er aktivt (${state.monsterIntensity} %) — prissatt overskudd ${fmtMill(result.net)}.`
+                    : `Sjokket er aktivt (${state.monsterIntensity} %) — total nytteøkning ${fmtMill(totalBoost)}; gap igjen ${fmtMill(-result.net)}.`;
+            }
+        }
+    }
+
     function renderUnpricedList() {
         const list = bind('stad-unpriced-list');
         if (!list) return;
@@ -530,6 +656,7 @@
         const result = compute();
         renderTable(result);
         drawChart(result);
+        renderMonsterBox(result);
     }
 
     function bindSlider(id, key, parser, onChange) {
@@ -589,6 +716,7 @@
 
         renderUnpricedList();
         applyPreset('kystverk_2026');
+        renderMonsterBox(compute());
     }
 
     if (document.readyState === 'loading') {

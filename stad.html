@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800;900&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/stad.css?v=3">
+    <link rel="stylesheet" href="css/stad.css?v=4">
 </head>
 <body class="stad-page">
     <nav class="stad-nav" aria-label="Stad-analyse navigasjon">
@@ -20,6 +20,7 @@
                 <li><a href="index.html">Podkast</a></li>
                 <li><a href="institutt.html">Institutt ↗</a></li>
                 <li><a href="#beregning" aria-current="page">Beregning</a></li>
+                <li><a href="#sjomonster">Sjømonster</a></li>
                 <li><a href="#metode">Metode</a></li>
             </ul>
             <a href="institutt.html" class="stad-nav-back">← Tilbake til institutt</a>
@@ -53,15 +54,6 @@
 
             <div class="stad-panel stad-panel--chart">
                 <span class="stad-watermark" id="stad-watermark">NÅVERDI · 2026-KRONER · KYSTVERKET · 2026</span>
-                <div class="stad-shock-bar">
-                    <button type="button" class="stad-shock-btn" id="stad-monster-btn" aria-pressed="false">
-                        Sjømonster-sjokket
-                    </button>
-                    <p class="stad-shock-note">
-                        Forhistorisk fauna dukker opp utenfor Stad og angriper skipstrafikken.
-                        Betalingsvilligheten for trygg tunnelpassasje eksploderer — ikke modellert i KS1.
-                    </p>
-                </div>
                 <div class="stad-chart-wrap">
                     <canvas id="stad-canvas" aria-label="Søylediagram: kostnader, prissatt nytte og netto nåverdi"></canvas>
                 </div>
@@ -85,6 +77,38 @@
                     <p class="stad-verdict stad-verdict--neg" id="stad-verdict">—</p>
                 </div>
             </div>
+
+            <aside class="stad-monster-box" id="sjomonster" aria-labelledby="stad-monster-heading">
+                <div class="stad-monster-head">
+                    <div class="stad-monster-intro">
+                        <p class="stad-monster-tag">SIØA-scenario · ikke i KS1 · jfr. Godzilla-sjokket</p>
+                        <h2 id="stad-monster-heading">Sjømonster-sjokket</h2>
+                        <p class="stad-monster-lead">
+                            Et forhistorisk sjømonster dukker opp utenfor Stad og angriper skipstrafikken.
+                            Åpent farvann blir uacceptabelt risikoutsatt — betalingsvilligheten for trygg
+                            tunnelpassasje øker dramatisk på komponentene under.
+                        </p>
+                    </div>
+                    <div class="stad-monster-actions">
+                        <button type="button" class="stad-shock-btn" id="stad-monster-btn" aria-pressed="false">
+                            Utløs sjømonster-sjokket
+                        </button>
+                        <div class="stad-monster-intensity" id="stad-monster-intensity-wrap">
+                            <label class="stad-slider-row">
+                                <span>Angrepsintensitet <strong id="stad-monster-intensity-val">100 %</strong></span>
+                                <input type="range" id="stad-monster-intensity" min="10" max="100" step="5" value="100">
+                            </label>
+                        </div>
+                        <p class="stad-monster-status" id="stad-monster-status" aria-live="polite">
+                            Sjokket er av — komponentene viser maks effekt ved full intensitet.
+                        </p>
+                    </div>
+                </div>
+                <div class="stad-monster-body">
+                    <h3>Hva sjokket innebærer</h3>
+                    <ul class="stad-monster-components" id="stad-monster-components"></ul>
+                </div>
+            </aside>
 
             <div class="stad-controls-grid" aria-label="Parametre for nåverdiberegning">
                 <div class="stad-control-group">
@@ -127,18 +151,6 @@
                         <label>Vekst i tids-/sikkerhetsverdi <span id="stad-growth-val">1,5 %</span></label>
                         <input type="range" id="stad-growth" min="0" max="3" step="0.1" value="1.5">
                     </div>
-                </div>
-
-                <div class="stad-control-group stad-control-group--monster" id="stad-monster-sliders" hidden>
-                    <h3>Sjømonster-intensitet</h3>
-                    <div class="stad-slider-row">
-                        <label>Angrepsintensitet <span id="stad-monster-intensity-val">100 %</span></label>
-                        <input type="range" id="stad-monster-intensity" min="10" max="100" step="5" value="100">
-                    </div>
-                    <p class="stad-control-hint">
-                        Ved full intensitet: ulykkesverdi ×12, ventetid ×6, hurtigbåt ×3,5 — pluss
-                        prissatt monster-trygghet. Skipstrafikken flykter inn i tunnelen.
-                    </p>
                 </div>
 
                 <div class="stad-control-group">
@@ -271,6 +283,6 @@
         </p>
     </footer>
 
-    <script src="js/stad.js?v=3"></script>
+    <script src="js/stad.js?v=4"></script>
 </body>
 </html>

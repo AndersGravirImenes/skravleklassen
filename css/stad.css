@@ -223,13 +223,175 @@ a { color: inherit; text-decoration: none; }
     box-shadow: 0 0 28px rgba(46, 160, 130, 0.12);
 }
 
-.stad-shock-bar {
+.stad-monster-box {
+    margin-bottom: 1.5rem;
+    padding: 1.5rem 1.65rem;
+    border: 1px solid rgba(110, 232, 196, 0.22);
+    background: linear-gradient(165deg, rgba(20, 48, 42, 0.55) 0%, rgba(10, 20, 32, 0.75) 100%);
+}
+
+.stad-monster-box--active {
+    border-color: rgba(110, 232, 196, 0.5);
+    box-shadow: 0 0 32px rgba(46, 160, 130, 0.14);
+}
+
+.stad-monster-head {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 1.5rem 2rem;
+    align-items: start;
+    margin-bottom: 1.35rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid rgba(110, 232, 196, 0.15);
+}
+
+.stad-monster-tag {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: #6ee8c4;
+    margin-bottom: 0.55rem;
+}
+
+.stad-monster-head h2 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.05rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #b8fff0;
+    margin-bottom: 0.65rem;
+}
+
+.stad-monster-lead {
+    margin: 0;
+    font-size: 0.92rem;
+    color: var(--muted);
+    line-height: 1.65;
+    max-width: 72ch;
+}
+
+.stad-monster-actions {
+    min-width: 260px;
     display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
+.stad-monster-intensity {
+    opacity: 0.45;
+    pointer-events: none;
+    transition: opacity 0.2s;
+}
+
+.stad-monster-intensity--live {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.stad-monster-intensity .stad-slider-row {
+    margin: 0;
+}
+
+.stad-monster-intensity .stad-slider-row > span {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--dim);
+    margin-bottom: 0.4rem;
+}
+
+.stad-monster-intensity strong {
+    color: #6ee8c4;
+    font-weight: 600;
+}
+
+.stad-monster-status {
+    margin: 0;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--dim);
+    line-height: 1.5;
+}
+
+.stad-monster-box--active .stad-monster-status {
+    color: #8ed4c8;
+}
+
+.stad-monster-body h3 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #6ee8c4;
+    margin-bottom: 0.85rem;
+}
+
+.stad-monster-components {
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+.stad-monster-item {
+    padding: 0.85rem 1rem;
+    border: 1px solid rgba(110, 232, 196, 0.12);
+    background: rgba(8, 18, 28, 0.45);
+    font-size: 0.86rem;
+    color: var(--muted);
+    line-height: 1.55;
+}
+
+.stad-monster-item--live {
+    border-color: rgba(110, 232, 196, 0.35);
+    background: rgba(46, 120, 100, 0.1);
+}
+
+.stad-monster-item-head {
+    display: flex;
+    justify-content: space-between;
     align-items: flex-start;
-    gap: 1rem;
-    margin-bottom: 1rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid rgba(94, 184, 232, 0.15);
+    gap: 0.75rem;
+    margin-bottom: 0.35rem;
+}
+
+.stad-monster-item strong {
+    color: var(--text);
+    font-size: 0.9rem;
+}
+
+.stad-monster-effect {
+    flex-shrink: 0;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.58rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #5a8a80;
+    text-align: right;
+}
+
+.stad-monster-item--live .stad-monster-effect {
+    color: #6ee8c4;
+}
+
+.stad-monster-item p {
+    margin: 0;
+}
+
+.stad-monster-boost {
+    display: inline-block;
+    margin-top: 0.45rem;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.58rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #6ee8c4;
 }
 
 .stad-shock-btn {
@@ -264,23 +426,6 @@ a { color: inherit; text-decoration: none; }
 @keyframes stad-monster-pulse {
     0%, 100% { box-shadow: 0 0 16px rgba(110, 232, 196, 0.35); }
     50% { box-shadow: 0 0 28px rgba(110, 232, 196, 0.55); }
-}
-
-.stad-shock-note {
-    margin: 0;
-    font-size: 0.86rem;
-    color: var(--dim);
-    line-height: 1.55;
-    max-width: 70ch;
-}
-
-.stad-control-group--monster {
-    border-color: rgba(110, 232, 196, 0.3);
-    background: linear-gradient(160deg, rgba(46, 120, 100, 0.1) 0%, rgba(10, 20, 32, 0.55) 100%);
-}
-
-.stad-control-group--monster h3 {
-    color: #6ee8c4;
 }
 
 .stad-controls-grid {
